@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Статистика котов</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-cat"></i> Статистика котов</h1>
+            <div class="update-info">
+                <i class="fas fa-sync-alt"></i>
+                <span>Данные обновляются каждую секунду</span>
+                <div class="last-update" id="lastUpdate">Загрузка...</div>
+            </div>
+        </header>
+
+        <main class="dashboard">
+            <!-- Основные метрики -->
+            <section class="metrics-grid">
+                <div class="metric-card total-cats">
+                    <div class="metric-icon">
+                        <i class="fas fa-paw"></i>
+                    </div>
+                    <div class="metric-content">
+                        <h3>Всего котов</h3>
+                        <div class="metric-value" id="totalCats">0</div>
+                    </div>
+                </div>
+
+                <div class="metric-card total-attacks">
+                    <div class="metric-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <div class="metric-content">
+                        <h3>Всего атак</h3>
+                        <div class="metric-value" id="totalAttacks">0</div>
+                    </div>
+                </div>
+
+                <div class="metric-card success-rate">
+                    <div class="metric-icon">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    <div class="metric-content">
+                        <h3>Успешных атак</h3>
+                        <div class="metric-value" id="avgSuccess">0%</div>
+                    </div>
+                </div>
+
+                <div class="metric-card matroskin">
+                    <div class="metric-icon">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                    <div class="metric-content">
+                        <h3>Матроскины</h3>
+                        <div class="metric-value" id="totalMatroskin">0</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Статистика престижей -->
+            <section class="prestige-section">
+                <h2><i class="fas fa-chart-line"></i> Распределение по уровням престижа</h2>
+                <div class="prestige-grid" id="prestigeStats">
+                    <!-- Динамически заполнится JavaScript -->
+                </div>
+            </section>
+
+            <!-- Подробная таблица -->
+            <section class="details-section">
+                <h2><i class="fas fa-table"></i> Подробная статистика</h2>
+                <div class="table-container">
+                    <table id="catsTable">
+                        <thead>
+                            <tr>
+                                <th>Игрок</th>
+                                <th>Коты</th>
+                                <th>Атаки</th>
+                                <th>Успешные атаки</th>
+                                <th>Матроскины</th>
+                                <th>Уровень престижа</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Данные заполнятся динамически -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p>Статистика обновляется в реальном времени | Всего записей: <span id="totalRecords">0</span></p>
+            <p class="server-info">Сервер работает на порту 3000</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
