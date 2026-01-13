@@ -4,11 +4,10 @@
 
 const CONFIG = {
     SERVER_URL: 'http://78.40.188.120:3000',
-    USE_PROXY: false, // true для использования прокси через текущий сервер
-    AUTO_REFRESH_INTERVAL: 5000, // 5 секунд
-    DEMO_MODE_ENABLED: true, // показывать демо-данные если сервер недоступен
-    RETRY_ATTEMPTS: 3, // количество попыток перед переходом в демо-режим
-    REQUEST_TIMEOUT: 3000 // таймаут запроса в мс
+    AUTO_REFRESH_INTERVAL: 5000,
+    DEMO_MODE_ENABLED: true,
+    RETRY_ATTEMPTS: 3,
+    REQUEST_TIMEOUT: 3000
 };
 
 // ==============================================
@@ -54,17 +53,6 @@ function getCurrentTime() {
     });
 }
 
-function getCurrentDateTime() {
-    return new Date().toLocaleString('ru-RU', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-    });
-}
-
 // ==============================================
 // ОБРАБОТКА API
 // ==============================================
@@ -94,96 +82,80 @@ async function fetchWithTimeout(url, options = {}) {
     }
 }
 
-// Пытаемся получить данные разными способами
-async function tryFetchData() {
-    const methods = [
-        tryDirectFetch,
-        tryProxyFetch,
-        tryJsonpFetch
-    ];
+// Проверяем, можем ли мы использовать прямой запрос
+function canUseDirectFetch() {
+    // Если текущая страница на HTTPS, а сервер на HTTP - нельзя
+    if (window.location.protocol === 'https:' && CONFIG.SERVER_URL.startsWith('http:')) {
+        console.warn('Mixed Content: HTTPS страница не может запрашивать HTTP ресурсы');
+        return false;
+    }
+    return true;
+}
+
+// Основная функция получения данных
+async function fetchData() {
+    console.log(`[${getCurrentTime()}] Запрос данных...`);
     
-    for (const method of methods) {
-        try {
-            console.log(`Пробуем метод: ${method.name}`);
-            const data = await method();
-            return data;
-        } catch (error) {
-            console.log(`Метод ${method.name} не сработал:`, error.message);
-            continue;
+    if (!appState.connectionChecked) {
+        appState.connectionChecked = true;
+        updateConnectionStatus();
+    }
+    
+    // Проверяем, можем ли мы делать прямой запрос
+    if (!canUseDirectFetch()) {
+        console.log('Прямой запрос невозможен из-за Mixed Content');
+        handleConnectionError('Mixed Content блокировка');
+        return false;
+    }
+    
+    try {
+        const endpoints = [
+            `${CONFIG.SERVER_URL}/stats`,
+            `${CONFIG.SERVER_URL}/prestige-stats`,
+            `${CONFIG.SERVER_URL}/cats-data`
+        ];
+        
+        const [statsData, prestigeData, allData] = await Promise.all(
+            endpoints.map(endpoint => fetchWithTimeout(endpoint))
+        );
+        
+        console.log('Данные успешно получены');
+        
+        appState.isOnline = true;
+        appState.isDemoMode = false;
+        appState.retryCount = 0;
+        
+        updateUI(statsData, prestigeData, allData);
+        updateConnectionStatus();
+        
+        if (appState.retryCount > 0) {
+            showNotification('Соединение восстановлено!', 'success');
         }
+        
+        return true;
+        
+    } catch (error) {
+        console.error(`[${getCurrentTime()}] Ошибка:`, error.message);
+        handleConnectionError(error.message);
+        return false;
     }
-    
-    throw new Error('Все методы получения данных не сработали');
 }
 
-// Прямой запрос к серверу
-async function tryDirectFetch() {
-    const endpoints = [
-        `${CONFIG.SERVER_URL}/stats`,
-        `${CONFIG.SERVER_URL}/prestige-stats`,
-        `${CONFIG.SERVER_URL}/cats-data`
-    ];
+// Обработка ошибок соединения
+function handleConnectionError(errorMessage) {
+    appState.isOnline = false;
+    appState.retryCount++;
     
-    const [stats, prestige, allData] = await Promise.all(
-        endpoints.map(endpoint => fetchWithTimeout(endpoint))
-    );
+    updateConnectionStatus();
     
-    return { stats, prestige, allData };
-}
-
-// Запрос через прокси (если настроен)
-async function tryProxyFetch() {
-    if (!CONFIG.USE_PROXY) {
-        throw new Error('Прокси не настроен');
+    if (appState.retryCount >= CONFIG.RETRY_ATTEMPTS && CONFIG.DEMO_MODE_ENABLED) {
+        if (!appState.isDemoMode) {
+            appState.isDemoMode = true;
+            showDemoData();
+        }
+    } else {
+        showNotification(`Ошибка подключения (${appState.retryCount}/${CONFIG.RETRY_ATTEMPTS})`, 'error');
     }
-    
-    const endpoints = ['/proxy/stats', '/proxy/prestige-stats', '/proxy/cats-data'];
-    
-    const [stats, prestige, allData] = await Promise.all(
-        endpoints.map(endpoint => fetchWithTimeout(endpoint))
-    );
-    
-    return { stats, prestige, allData };
-}
-
-// JSONP запрос (обход CORS)
-async function tryJsonpFetch() {
-    return new Promise((resolve, reject) => {
-        const callbackName = `jsonp_callback_${Date.now()}`;
-        const script = document.createElement('script');
-        
-        window[callbackName] = function(data) {
-            delete window[callbackName];
-            document.body.removeChild(script);
-            
-            // JSONP возвращает только один endpoint, нужно адаптировать
-            const result = {
-                stats: data,
-                prestige: { prestigeStats: {} },
-                allData: {}
-            };
-            
-            resolve(result);
-        };
-        
-        script.src = `${CONFIG.SERVER_URL}/stats?callback=${callbackName}`;
-        script.onerror = () => {
-            delete window[callbackName];
-            document.body.removeChild(script);
-            reject(new Error('JSONP failed'));
-        };
-        
-        document.body.appendChild(script);
-        
-        // Таймаут
-        setTimeout(() => {
-            if (window[callbackName]) {
-                delete window[callbackName];
-                document.body.removeChild(script);
-                reject(new Error('JSONP timeout'));
-            }
-        }, CONFIG.REQUEST_TIMEOUT);
-    });
 }
 
 // ==============================================
@@ -313,10 +285,7 @@ function generateDemoData() {
     
     const players = [
         "ShadowCat", "MidnightWhisper", "GoldenPaw", "SilverFang", "EmeraldEyes",
-        "VelvetPaws", "ThunderTail", "Starlight", "Moonbeam", "WhiskerWizard",
-        "ShadowStalker", "CrimsonClaw", "SapphireGaze", "IronWhiskers", "VelvetShadow",
-        "AmberHunter", "OnyxProwler", "RubyRoamer", "JadeJumper", "TopazTracker",
-        "PlatinumPaw", "CopperCat", "Obsidian", "PearlPurrer", "DiamondDash"
+        "VelvetPaws", "ThunderTail", "Starlight", "Moonbeam", "WhiskerWizard"
     ];
     
     const demoAllData = {};
@@ -324,14 +293,14 @@ function generateDemoData() {
     let totalAttacks = 0;
     let totalSuccessfulAttacks = 0;
     let totalMatroskin = 0;
-    const prestigeStats = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
+    const prestigeStats = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0};
     
     players.forEach((player, index) => {
         const cats = Math.floor(Math.random() * 400) + 100;
         const attacks = Math.floor(Math.random() * 150) + 30;
         const successfulAttacks = Math.floor(attacks * (0.5 + Math.random() * 0.3));
         const matroskin = Math.floor(Math.random() * 8);
-        const prestigeLevel = Math.floor(Math.random() * 6);
+        const prestigeLevel = Math.floor(Math.random() * 5);
         
         demoAllData[player] = {
             cats,
@@ -373,7 +342,7 @@ function showDemoData() {
     appState.isOnline = false;
     
     updateUI(demoData.stats, demoData.prestige, demoData.allData);
-    showNotification('Используются демо-данные. Сервер недоступен.', 'warning');
+    showNotification('Используются демо-данные. Прямое подключение к серверу невозможно.', 'warning');
     updateConnectionStatus();
 }
 
@@ -428,7 +397,7 @@ function showNotification(message, type = 'info') {
     setTimeout(() => {
         notification.style.animation = 'slideOutRight 0.3s ease';
         setTimeout(() => notification.remove(), 300);
-    }, type === 'error' ? 8000 : 5000);
+    }, 5000);
 }
 
 // ==============================================
@@ -481,65 +450,26 @@ function updateConnectionStatus() {
 }
 
 // ==============================================
-// ОСНОВНАЯ ЛОГИКА
-// ==============================================
-
-async function fetchData() {
-    console.log(`[${getCurrentTime()}] Запрос данных...`);
-    
-    if (!appState.connectionChecked) {
-        appState.connectionChecked = true;
-        updateConnectionStatus();
-    }
-    
-    try {
-        const data = await tryFetchData();
-        
-        appState.isOnline = true;
-        appState.isDemoMode = false;
-        appState.retryCount = 0;
-        
-        updateUI(data.stats, data.prestige, data.allData);
-        updateConnectionStatus();
-        
-        if (appState.retryCount > 0) {
-            showNotification('Соединение восстановлено!', 'success');
-        }
-        
-        return true;
-        
-    } catch (error) {
-        console.error(`[${getCurrentTime()}] Ошибка:`, error.message);
-        
-        appState.isOnline = false;
-        appState.retryCount++;
-        
-        updateConnectionStatus();
-        
-        if (appState.retryCount >= CONFIG.RETRY_ATTEMPTS && CONFIG.DEMO_MODE_ENABLED) {
-            if (!appState.isDemoMode) {
-                appState.isDemoMode = true;
-                showDemoData();
-            }
-        } else {
-            showNotification(`Ошибка подключения (${appState.retryCount}/${CONFIG.RETRY_ATTEMPTS})`, 'error');
-        }
-        
-        return false;
-    }
-}
-
-// ==============================================
-// ИНИЦИАЛИЗАЦИЯ И КОНТРОЛЛЕРЫ
+// ИНИЦИАЛИЗАЦИЯ
 // ==============================================
 
 function setupAutoRefresh() {
     // Первый запрос
-    setTimeout(() => fetchData(), 1000);
+    setTimeout(() => {
+        // Проверяем, можем ли мы делать запрос
+        if (canUseDirectFetch()) {
+            fetchData();
+        } else {
+            // Если нет - сразу показываем демо-данные
+            if (CONFIG.DEMO_MODE_ENABLED) {
+                showDemoData();
+            }
+        }
+    }, 1000);
     
     // Интервальное обновление
     setInterval(() => {
-        if (!appState.isDemoMode || appState.retryCount < CONFIG.RETRY_ATTEMPTS) {
+        if (canUseDirectFetch() && (!appState.isDemoMode || appState.retryCount < CONFIG.RETRY_ATTEMPTS)) {
             fetchData();
         }
     }, CONFIG.AUTO_REFRESH_INTERVAL);
@@ -591,7 +521,11 @@ function setupManualRefreshButton() {
         button.disabled = true;
         icon.className = 'fas fa-spinner fa-spin';
         
-        await fetchData();
+        if (canUseDirectFetch()) {
+            await fetchData();
+        } else {
+            showNotification('Прямое подключение невозможно. Используются демо-данные.', 'warning');
+        }
         
         setTimeout(() => {
             button.disabled = false;
@@ -745,6 +679,7 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('Конфигурация:', CONFIG);
     console.log('Текущий URL:', window.location.href);
     console.log('Протокол:', window.location.protocol);
+    console.log('Можем ли делать прямой запрос?', canUseDirectFetch());
     
     // Настройка глобальных стилей
     setupGlobalStyles();
@@ -759,33 +694,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Показываем приветственное сообщение
     setTimeout(() => {
-        if (!appState.isOnline) {
-            showNotification('Загрузка данных...', 'info');
-        }
+        showNotification('Загрузка данных...', 'info');
     }, 500);
-    
-    // Проверяем доступность сервера
-    checkServerAvailability();
 });
-
-async function checkServerAvailability() {
-    try {
-        const response = await fetch(`${CONFIG.SERVER_URL}/stats`, {
-            method: 'HEAD',
-            mode: 'no-cors' // no-cors для простой проверки
-        });
-        
-        console.log('Сервер доступен');
-        appState.isOnline = true;
-    } catch (error) {
-        console.log('Сервер недоступен, переходим в демо-режим');
-        if (CONFIG.DEMO_MODE_ENABLED) {
-            showDemoData();
-        }
-    }
-    
-    updateConnectionStatus();
-}
 
 // Экспортируем функции для отладки
 window.appDebug = {
@@ -793,7 +704,7 @@ window.appDebug = {
     getConfig: () => CONFIG,
     forceDemoMode: () => showDemoData(),
     forceRefresh: () => fetchData(),
-    checkConnection: () => checkServerAvailability()
+    checkConnection: () => canUseDirectFetch()
 };
 
 console.log('✅ Скрипт загружен и готов к работе');
