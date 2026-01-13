@@ -72,7 +72,6 @@
     </div>
 
     <script>
-
         // Функция для отображения данных
         function displayStats(data) {
             const container = document.getElementById('stats-container');
@@ -108,27 +107,30 @@
             container.innerHTML = html;
         }
 
+        // Функция загрузки данных через fetch
+        function loadStats() {
+            fetch('http://78.40.188.120:3000/stats')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    displayStats(data);
+                })
+                .catch(error => {
+                    console.error('Error loading stats:', error);
+                    document.getElementById('stats-container').innerHTML = 
+                        '<div class="loading">Error loading data. Retrying...</div>';
+                });
+        }
+
         // Загружаем данные при загрузке страницы
         document.addEventListener('DOMContentLoaded', loadStats);
         
         // Обновляем данные каждые 5 секунд
         setInterval(loadStats, 5000);
-    </script>
-    <script>
-    // Вместо прямого запроса, используем JSONP или iframe
-    function loadStats() {
-        // Способ 1: JSONP
-        const script = document.createElement('script');
-        script.src = 'http://78.40.188.120:3000/stats?callback=handleData';
-        document.head.appendChild(script);
-    }
-
-    function handleData(data) {
-        console.log(data);
-        // Отображаем данные
-    }
-
-    // ИЛИ Способ 2: Создать свой прокси на GitHub Pages
     </script>
 </body>
 </html>
