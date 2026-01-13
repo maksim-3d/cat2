@@ -13,115 +13,42 @@
             min-height: 100vh;
             padding: 20px;
         }
-        .container {
-            max-width: 100%;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            color: white;
-        }
-        .header h1 {
-            font-size: 28px;
-            margin-bottom: 10px;
-        }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        .stat-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 20px;
-            text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            transition: transform 0.3s;
-        }
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
-        .stat-value {
-            font-size: 36px;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 5px;
-        }
-        .stat-label {
-            color: #666;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: white;
-        }
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(255,255,255,0.3);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .refresh-btn {
-            width: 100%;
-            padding: 18px;
-            background: #0088cc;
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 20px;
-            transition: all 0.3s;
-        }
-        .refresh-btn:hover {
-            background: #0077bb;
-            transform: scale(1.02);
-        }
-        .timestamp {
-            text-align: center;
-            color: rgba(255,255,255,0.7);
-            font-size: 12px;
-            margin-top: 15px;
-            font-style: italic;
-        }
-        .error {
-            background: rgba(255, 50, 50, 0.2);
-            border: 1px solid rgba(255, 50, 50, 0.5);
-            border-radius: 10px;
-            padding: 15px;
-            color: white;
-            text-align: center;
-            margin-bottom: 15px;
-        }
+        .container { max-width: 100%; }
+        .header { text-align: center; margin-bottom: 30px; color: white; }
+        .header h1 { font-size: 28px; margin-bottom: 10px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: rgba(255, 255, 255, 0.95); border-radius: 15px; padding: 20px; text-align: center; }
+        .stat-value { font-size: 36px; font-weight: bold; color: #333; margin-bottom: 5px; }
+        .stat-label { color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+        .loading { text-align: center; padding: 40px; color: white; }
+        .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .refresh-btn { width: 100%; padding: 18px; background: #0088cc; color: white; border: none; border-radius: 12px; font-size: 18px; cursor: pointer; margin-top: 20px; }
+        .error { background: rgba(255, 50, 50, 0.2); border-radius: 10px; padding: 15px; color: white; text-align: center; margin-bottom: 15px; }
+        .success { background: rgba(50, 255, 50, 0.2); border-radius: 10px; padding: 15px; color: white; text-align: center; margin-bottom: 15px; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>🐱 Статистика котов</h1>
-            <p id="status">Подключение...</p>
+            <p id="status">Инициализация...</p>
         </div>
         
         <div id="stats">
             <div class="loading">
                 <div class="spinner"></div>
-                <div>Загрузка...</div>
+                <div>Подключение к серверу...</div>
             </div>
         </div>
         
         <button onclick="loadData()" class="refresh-btn">🔄 Обновить</button>
+        
+        <div id="message" style="display: none;"></div>
+        
+        <div style="margin-top: 20px; text-align: center; color: rgba(255,255,255,0.7); font-size: 12px;">
+            IP сервера: 78.40.188.120:3000
+        </div>
     </div>
 
     <script>
@@ -130,66 +57,92 @@
         tg.expand();
         tg.ready();
         
-        // Используем CORS прокси для обхода Mixed Content
+        // Рабочие CORS прокси (проверены)
+        const WORKING_PROXIES = [
+            {
+                name: 'AllOrigins',
+                getUrl: (url) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+                parseResponse: async (response) => {
+                    const data = await response.json();
+                    return JSON.parse(data.contents);
+                }
+            },
+            {
+                name: 'CorsProxy',
+                getUrl: (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+                parseResponse: async (response) => await response.json()
+            },
+            {
+                name: 'GitHubProxy',
+                getUrl: (url) => `https://api.codetabs.com/v1/proxy?quest=${url}`,
+                parseResponse: async (response) => await response.json()
+            }
+        ];
+        
+        let currentProxy = 0;
+        const SERVER_URL = 'http://78.40.188.120:3000/stats';
+        
+        // Функция загрузки через прокси
         async function loadData() {
-            console.log('Загружаю данные через CORS прокси...');
-            document.getElementById('status').textContent = 'Загрузка...';
+            const proxy = WORKING_PROXIES[currentProxy];
+            console.log(`Пробую прокси: ${proxy.name}`);
+            
+            showMessage(`Использую ${proxy.name}...`, 'success');
+            document.getElementById('status').textContent = `Подключение через ${proxy.name}...`;
             
             try {
-                // Способ 1: Используем публичный CORS прокси
-                const proxyUrl = 'https://corsproxy.io/?';
-                const targetUrl = 'http://78.40.188.120:3000/stats';
+                const proxyUrl = proxy.getUrl(SERVER_URL);
+                console.log('Запрос к:', proxyUrl);
                 
-                const response = await fetch(proxyUrl + encodeURIComponent(targetUrl), {
+                const response = await fetch(proxyUrl, {
                     headers: {
-                        'Accept': 'application/json'
-                    }
+                        'Accept': 'application/json',
+                        'User-Agent': 'Telegram-Mini-App'
+                    },
+                    timeout: 10000
                 });
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
                 }
                 
-                const data = await response.json();
+                const data = await proxy.parseResponse(response);
                 console.log('Данные получены:', data);
+                
                 displayData(data);
-                document.getElementById('status').textContent = 'Подключено ✓';
+                showMessage(`✓ Успешно через ${proxy.name}`, 'success');
+                document.getElementById('status').textContent = `Обновлено: ${new Date().toLocaleTimeString()}`;
                 
             } catch (error) {
-                console.error('Ошибка:', error);
+                console.error(`Прокси ${proxy.name} не сработал:`, error);
                 
-                // Способ 2: Пробуем другой прокси
-                try {
-                    await loadWithAllOrigins();
-                } catch (e) {
-                    // Способ 3: Показываем статические данные
-                    showStaticData();
-                    document.getElementById('status').textContent = 'Оффлайн режим';
+                // Пробуем следующий прокси
+                currentProxy = (currentProxy + 1) % WORKING_PROXIES.length;
+                
+                if (currentProxy === 0) {
+                    // Все прокси не работают, показываем демо данные
+                    showMessage('Все прокси не работают. Показываю демо данные.', 'error');
+                    showDemoData();
+                    document.getElementById('status').textContent = 'Демо режим';
+                } else {
+                    // Пробуем следующий прокси через 2 секунды
+                    setTimeout(loadData, 2000);
                 }
             }
         }
         
-        // CORS прокси allorigins.win
-        async function loadWithAllOrigins() {
-            const response = await fetch('https://api.allorigins.win/get?url=' + 
-                encodeURIComponent('http://78.40.188.120:3000/stats'));
-            
-            const result = await response.json();
-            const data = JSON.parse(result.contents);
-            displayData(data);
-        }
-        
-        // Статические данные если сервер недоступен
-        function showStaticData() {
-            const staticData = {
-                totalCats: 1500,
-                totalAttacks: 3200,
-                avgSuccess: 75,
-                totalMatroskin: 42,
+        // Демо данные
+        function showDemoData() {
+            const demoData = {
+                totalCats: 1854,
+                totalAttacks: 3247,
+                avgSuccess: 72,
+                totalMatroskin: 56,
                 count: 22,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                note: 'Демо данные (сервер недоступен)'
             };
-            displayData(staticData);
+            displayData(demoData);
         }
         
         // Отображение данных
@@ -218,21 +171,31 @@
                     </div>
                 </div>
                 <div style="text-align:center; color:white; margin-top:10px; font-size:12px;">
-                    ${data.timestamp ? 'Обновлено: ' + new Date(data.timestamp).toLocaleTimeString() : 'Оффлайн данные'}
+                    ${data.timestamp ? 'Обновлено: ' + new Date(data.timestamp).toLocaleTimeString() : ''}
+                    ${data.note ? '<br>' + data.note : ''}
                 </div>
             `;
         }
         
+        // Вспомогательные функции
         function formatNumber(num) {
             if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
             if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
             return num;
         }
         
+        function showMessage(text, type) {
+            const msg = document.getElementById('message');
+            msg.innerHTML = text;
+            msg.className = type;
+            msg.style.display = 'block';
+            setTimeout(() => msg.style.display = 'none', 5000);
+        }
+        
         // Автостарт
         document.addEventListener('DOMContentLoaded', function() {
-            loadData();
-            setInterval(loadData, 30000);
+            setTimeout(loadData, 1000); // Ждем инициализацию Telegram
+            setInterval(loadData, 30000); // Автообновление
         });
     </script>
 </body>
