@@ -61,6 +61,14 @@
             color: #666;
             padding: 20px;
         }
+        .error {
+            text-align: center;
+            color: red;
+            padding: 20px;
+            border: 1px solid red;
+            border-radius: 5px;
+            background-color: #ffe6e6;
+        }
     </style>
 </head>
 <body>
@@ -69,13 +77,22 @@
         <div id="stats-container" class="loading">
             Loading statistics...
         </div>
+        <div id="error-container" style="display: none;"></div>
     </div>
 
     <script>
+        // Конфигурация сервера
+        const SERVER_URL = 'https://78.40.188.120:3443'; // или http://78.40.188.120:3000 если HTTPS не работает
+        let currentServerUrl = SERVER_URL;
+        let useCORS = true;
 
         // Функция для отображения данных
         function displayStats(data) {
             const container = document.getElementById('stats-container');
+            const errorContainer = document.getElementById('error-container');
+            
+            // Скрываем ошибку если она была
+            errorContainer.style.display = 'none';
             
             const html = `
                 <div class="stats-grid">
@@ -108,27 +125,120 @@
             container.innerHTML = html;
         }
 
-        // Загружаем данные при загрузке страницы
-        document.addEventListener('DOMContentLoaded', loadStats);
-        
-        // Обновляем данные каждые 5 секунд
-        setInterval(loadStats, 5000);
-    </script>
-    <script>
-    // Вместо прямого запроса, используем JSONP или iframe
-    function loadStats() {
-        // Способ 1: JSONP
-        const script = document.createElement('script');
-        script.src = 'https://78.40.188.120:3000/stats?callback=handleData';
-        document.head.appendChild(script);
-    }
+        // Функция для отображения ошибки
+        function displayError(message) {
+            const container = document.getElementById('stats-container');
+            const errorContainer = document.getElementById('error-container');
+            
+            container.innerHTML = '<div class="loading">Trying to reconnect...</div>';
+            errorContainer.innerHTML = `<div class="error">Error: ${message}</div>`;
+            errorContainer.style.display = 'block';
+            
+            console.error('Error loading stats:', message);
+        }
 
-    function handleData(data) {
-        console.log(data);
-        // Отображаем данные
-    }
+        // Основная функция загрузки данных
+        async function loadStats() {
+            try {
+                console.log('Trying to fetch from:', currentServerUrl);
+                
+                // Пробуем стандартный fetch с CORS
+                const response = await fetch(`${currentServerUrl}/stats`, {
+                    method: 'GET',
+                    mode: useCORS ? 'cors' : 'no-cors',
+                    headers: {
+                        'Accept': 'application/json',
+                    },
+                    cache: 'no-cache'
+                });
 
-    // ИЛИ Способ 2: Создать свой прокси на GitHub Pages
+                if (response.ok) {
+                    const data = await response.json();
+                    displayStats(data);
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+            } catch (error) {
+                console.warn('Fetch error, trying alternatives...', error);
+                
+                // Пробуем альтернативные методы
+                tryAlternativeMethods();
+            }
+        }
+
+        // Альтернативные методы загрузки данных
+        function tryAlternativeMethods() {
+            // Метод 1: Пробуем без CORS
+            if (useCORS) {
+                console.log('Trying without CORS...');
+                useCORS = false;
+                loadStats();
+                return;
+            }
+            
+            // Метод 2: Пробуем JSONP
+            tryJSONP();
+        }
+
+        // JSONP метод
+        function tryJSONP() {
+            console.log('Trying JSONP...');
+            
+            // Создаем callback функцию
+            window.jsonpCallback = function(data) {
+                displayStats(data);
+                // Очищаем callback
+                delete window.jsonpCallback;
+            };
+            
+            // Создаем script тег
+            const script = document.createElement('script');
+            script.src = `${currentServerUrl}/stats?callback=jsonpCallback`;
+            
+            // Добавляем обработчик ошибки
+            script.onerror = function() {
+                console.error('JSONP failed');
+                displayError('Failed to load data. Server may be down or blocked by CORS.');
+                delete window.jsonpCallback;
+            };
+            
+            // Удаляем старый скрипт если есть
+            const oldScript = document.querySelector('script[data-jsonp]');
+            if (oldScript) oldScript.remove();
+            
+            script.setAttribute('data-jsonp', 'true');
+            document.head.appendChild(script);
+            
+            // Устанавливаем таймаут
+            setTimeout(() => {
+                if (document.querySelector('script[data-jsonp]')) {
+                    console.error('JSONP timeout');
+                    script.remove();
+                    displayError('Connection timeout. Please check if server is running.');
+                    delete window.jsonpCallback;
+                }
+            }, 5000);
+        }
+
+        // Инициализация
+        function init() {
+            // Пробуем загрузить данные сразу
+            loadStats();
+            
+            // Устанавливаем интервал обновления
+            setInterval(loadStats, 5000);
+            
+            // Кнопка для ручного обновления (опционально)
+            const refreshBtn = document.createElement('button');
+            refreshBtn.textContent = '🔄 Refresh';
+            refreshBtn.style.cssText = 'display: block; margin: 20px auto; padding: 10px 20px; font-size: 14px; cursor: pointer;';
+            refreshBtn.onclick = loadStats;
+            document.querySelector('.container').appendChild(refreshBtn);
+        }
+
+        // Запускаем при загрузке страницы
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
