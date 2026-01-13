@@ -1,34 +1,32 @@
-// Настройки API
-const SERVER_URL = 'http://78.40.188.120:3000';
-const USE_PROXY = true; // true для GitHub Pages, false для локальной разработки
+// ==============================================
+// КОНФИГУРАЦИЯ
+// ==============================================
 
-// Определяем базовый URL в зависимости от окружения
-function getBaseUrl() {
-    const isLocal = window.location.hostname === 'localhost' || 
-                    window.location.hostname === '127.0.0.1' ||
-                    window.location.hostname === '';
-    
-    const isGitHub = window.location.hostname.includes('github.io');
-    
-    if (isLocal) {
-        // Для локальной разработки
-        return '';
-    } else if (isGitHub && USE_PROXY) {
-        // Для GitHub Pages используем ваш сервер
-        return SERVER_URL;
-    } else {
-        // Для других случаев
-        return window.location.origin;
-    }
-}
+const CONFIG = {
+    SERVER_URL: 'http://78.40.188.120:3000',
+    USE_PROXY: false, // true для использования прокси через текущий сервер
+    AUTO_REFRESH_INTERVAL: 5000, // 5 секунд
+    DEMO_MODE_ENABLED: true, // показывать демо-данные если сервер недоступен
+    RETRY_ATTEMPTS: 3, // количество попыток перед переходом в демо-режим
+    REQUEST_TIMEOUT: 3000 // таймаут запроса в мс
+};
 
-// URL API
-const API_BASE = getBaseUrl();
-const DATA_API = `${API_BASE}/cats-data`;
-const STATS_API = `${API_BASE}/stats`;
-const PRESTIGE_API = `${API_BASE}/prestige-stats`;
+// ==============================================
+// ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+// ==============================================
 
-// Элементы DOM
+let appState = {
+    isOnline: false,
+    isDemoMode: false,
+    retryCount: 0,
+    lastUpdateTime: null,
+    connectionChecked: false
+};
+
+// ==============================================
+// ПОЛУЧЕНИЕ ЭЛЕМЕНТОВ DOM
+// ==============================================
+
 const elements = {
     totalCats: document.getElementById('totalCats'),
     totalAttacks: document.getElementById('totalAttacks'),
@@ -40,83 +38,168 @@ const elements = {
     catsTable: document.querySelector('#catsTable tbody')
 };
 
-// Состояние приложения
-let appState = {
-    isOnline: true,
-    lastUpdateTime: null,
-    retryCount: 0
-};
+// ==============================================
+// УТИЛИТЫ
+// ==============================================
 
-// Форматирование чисел
 function formatNumber(num) {
     return new Intl.NumberFormat('ru-RU').format(num);
 }
 
-// Получение данных с сервера с обработкой ошибок
-async function fetchData() {
+function getCurrentTime() {
+    return new Date().toLocaleTimeString('ru-RU', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+}
+
+function getCurrentDateTime() {
+    return new Date().toLocaleString('ru-RU', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+}
+
+// ==============================================
+// ОБРАБОТКА API
+// ==============================================
+
+async function fetchWithTimeout(url, options = {}) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), CONFIG.REQUEST_TIMEOUT);
+    
     try {
-        console.log(`Запрашиваем данные с ${API_BASE}...`);
-        
-        // Создаем запросы с таймаутом
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        
-        const fetchOptions = {
-            method: 'GET',
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal,
             mode: 'cors',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            },
-            signal: controller.signal
-        };
-        
-        const [statsData, prestigeData, allData] = await Promise.all([
-            fetch(STATS_API, fetchOptions).then(handleResponse),
-            fetch(PRESTIGE_API, fetchOptions).then(handleResponse),
-            fetch(DATA_API, fetchOptions).then(handleResponse)
-        ]);
+            cache: 'no-cache'
+        });
         
         clearTimeout(timeoutId);
         
-        console.log('Данные успешно получены');
-        appState.isOnline = true;
-        appState.retryCount = 0;
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
         
-        updateStats(statsData);
-        updatePrestigeStats(prestigeData);
-        updateTable(allData);
-        updateTimestamp(statsData.timestamp || new Date().toISOString());
-        
-        showNotification('Данные успешно обновлены', 'success');
-        
+        return await response.json();
     } catch (error) {
         clearTimeout(timeoutId);
-        console.error('Ошибка при получении данных:', error);
-        
-        appState.retryCount++;
-        appState.isOnline = false;
-        
-        if (appState.retryCount > 3) {
-            showError('Не удалось подключиться к серверу. Показываем демо-данные.');
-            showDemoData();
-        } else {
-            showError(`Ошибка подключения (попытка ${appState.retryCount}/3). Повтор через 5 секунд...`);
-            setTimeout(fetchData, 5000);
+        throw error;
+    }
+}
+
+// Пытаемся получить данные разными способами
+async function tryFetchData() {
+    const methods = [
+        tryDirectFetch,
+        tryProxyFetch,
+        tryJsonpFetch
+    ];
+    
+    for (const method of methods) {
+        try {
+            console.log(`Пробуем метод: ${method.name}`);
+            const data = await method();
+            return data;
+        } catch (error) {
+            console.log(`Метод ${method.name} не сработал:`, error.message);
+            continue;
         }
     }
+    
+    throw new Error('Все методы получения данных не сработали');
 }
 
-// Обработка ответа сервера
-async function handleResponse(response) {
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+// Прямой запрос к серверу
+async function tryDirectFetch() {
+    const endpoints = [
+        `${CONFIG.SERVER_URL}/stats`,
+        `${CONFIG.SERVER_URL}/prestige-stats`,
+        `${CONFIG.SERVER_URL}/cats-data`
+    ];
+    
+    const [stats, prestige, allData] = await Promise.all(
+        endpoints.map(endpoint => fetchWithTimeout(endpoint))
+    );
+    
+    return { stats, prestige, allData };
+}
+
+// Запрос через прокси (если настроен)
+async function tryProxyFetch() {
+    if (!CONFIG.USE_PROXY) {
+        throw new Error('Прокси не настроен');
     }
-    return await response.json();
+    
+    const endpoints = ['/proxy/stats', '/proxy/prestige-stats', '/proxy/cats-data'];
+    
+    const [stats, prestige, allData] = await Promise.all(
+        endpoints.map(endpoint => fetchWithTimeout(endpoint))
+    );
+    
+    return { stats, prestige, allData };
 }
 
-// Обновление основных статистик
+// JSONP запрос (обход CORS)
+async function tryJsonpFetch() {
+    return new Promise((resolve, reject) => {
+        const callbackName = `jsonp_callback_${Date.now()}`;
+        const script = document.createElement('script');
+        
+        window[callbackName] = function(data) {
+            delete window[callbackName];
+            document.body.removeChild(script);
+            
+            // JSONP возвращает только один endpoint, нужно адаптировать
+            const result = {
+                stats: data,
+                prestige: { prestigeStats: {} },
+                allData: {}
+            };
+            
+            resolve(result);
+        };
+        
+        script.src = `${CONFIG.SERVER_URL}/stats?callback=${callbackName}`;
+        script.onerror = () => {
+            delete window[callbackName];
+            document.body.removeChild(script);
+            reject(new Error('JSONP failed'));
+        };
+        
+        document.body.appendChild(script);
+        
+        // Таймаут
+        setTimeout(() => {
+            if (window[callbackName]) {
+                delete window[callbackName];
+                document.body.removeChild(script);
+                reject(new Error('JSONP timeout'));
+            }
+        }, CONFIG.REQUEST_TIMEOUT);
+    });
+}
+
+// ==============================================
+// ОБНОВЛЕНИЕ ИНТЕРФЕЙСА
+// ==============================================
+
+function updateUI(statsData, prestigeData, allData) {
+    updateStats(statsData);
+    updatePrestigeStats(prestigeData);
+    updateTable(allData);
+    updateTimestamp(statsData.timestamp || new Date().toISOString());
+}
+
 function updateStats(data) {
+    if (!elements.totalCats) return;
+    
     elements.totalCats.textContent = formatNumber(data.totalCats || 0);
     elements.totalAttacks.textContent = formatNumber(data.totalAttacks || 0);
     elements.avgSuccess.textContent = (data.avgSuccess || 0) + '%';
@@ -124,68 +207,73 @@ function updateStats(data) {
     elements.totalRecords.textContent = formatNumber(data.count || 0);
 }
 
-// Обновление статистики престижей
 function updatePrestigeStats(data) {
+    if (!elements.prestigeStats) return;
+    
     const prestigeStats = data.prestigeStats || {0: 0};
     let html = '';
     
-    // Сортируем уровни престижа
     const sortedLevels = Object.keys(prestigeStats).sort((a, b) => a - b);
     
-    if (sortedLevels.length === 0) {
-        html = '<div class="no-data">Нет данных о престижах</div>';
-    } else {
-        sortedLevels.forEach(level => {
-            const count = prestigeStats[level];
-            html += `
-                <div class="prestige-item">
-                    <div class="prestige-level">${level}</div>
-                    <div class="prestige-count">${formatNumber(count)} игроков</div>
-                </div>
-            `;
-        });
-    }
+    sortedLevels.forEach(level => {
+        const count = prestigeStats[level];
+        const percentage = data.count ? Math.round((count / data.count) * 100) : 0;
+        
+        html += `
+            <div class="prestige-item">
+                <div class="prestige-level">${level}</div>
+                <div class="prestige-count">${formatNumber(count)} игроков</div>
+                <div class="prestige-percentage">${percentage}%</div>
+            </div>
+        `;
+    });
     
     elements.prestigeStats.innerHTML = html;
 }
 
-// Обновление таблицы
 function updateTable(data) {
-    let html = '';
+    if (!elements.catsTable) return;
+    
     const entries = Object.entries(data || {});
+    let html = '';
     
     if (entries.length === 0) {
         html = `
             <tr>
-                <td colspan="6" style="text-align: center; padding: 40px;">
-                    <i class="fas fa-database" style="font-size: 2rem; color: #ccc; margin-bottom: 10px; display: block;"></i>
-                    <div>Нет данных о котах</div>
-                    <small style="color: #888;">Ожидание данных от сервера...</small>
+                <td colspan="6" style="text-align: center; padding: 40px; color: #7f8c8d;">
+                    <i class="fas fa-database" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                    <div>Нет данных</div>
+                    <small>Ожидание обновления...</small>
                 </td>
             </tr>
         `;
     } else {
-        // Сортируем по количеству котов (по убыванию)
         entries.sort((a, b) => (b[1].cats || 0) - (a[1].cats || 0));
         
         entries.forEach(([player, stats]) => {
             const successRate = stats.attacks > 0 
                 ? Math.round((stats.successful_attacks || 0) / stats.attacks * 100)
                 : 0;
-                
-            // Определяем цвет для уровня престижа
+            
             const prestigeLevel = stats.prestige_level || 0;
             let prestigeClass = '';
-            if (prestigeLevel >= 3) prestigeClass = 'prestige-high';
-            else if (prestigeLevel >= 1) prestigeClass = 'prestige-medium';
+            
+            if (prestigeLevel >= 4) prestigeClass = 'prestige-legendary';
+            else if (prestigeLevel >= 2) prestigeClass = 'prestige-epic';
+            else if (prestigeLevel >= 1) prestigeClass = 'prestige-rare';
             
             html += `
                 <tr>
-                    <td><strong>${player}</strong></td>
-                    <td>${formatNumber(stats.cats || 0)}</td>
-                    <td>${formatNumber(stats.attacks || 0)}</td>
-                    <td>${formatNumber(stats.successful_attacks || 0)} <small>(${successRate}%)</small></td>
-                    <td>${formatNumber(stats.matroskin || 0)}</td>
+                    <td><i class="fas fa-user"></i> ${player}</td>
+                    <td><i class="fas fa-cat"></i> ${formatNumber(stats.cats || 0)}</td>
+                    <td><i class="fas fa-bolt"></i> ${formatNumber(stats.attacks || 0)}</td>
+                    <td>
+                        <i class="fas fa-crosshairs"></i> ${formatNumber(stats.successful_attacks || 0)}
+                        <small style="color: ${successRate >= 70 ? '#27ae60' : successRate >= 40 ? '#f39c12' : '#e74c3c'}">
+                            (${successRate}%)
+                        </small>
+                    </td>
+                    <td><i class="fas fa-crown"></i> ${formatNumber(stats.matroskin || 0)}</td>
                     <td><span class="prestige-badge ${prestigeClass}">${prestigeLevel}</span></td>
                 </tr>
             `;
@@ -195,136 +283,110 @@ function updateTable(data) {
     elements.catsTable.innerHTML = html;
 }
 
-// Обновление времени последнего обновления
 function updateTimestamp(timestamp) {
+    if (!elements.lastUpdate) return;
+    
     const date = new Date(timestamp);
     const timeString = date.toLocaleTimeString('ru-RU', {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit'
     });
-    const dateString = date.toLocaleDateString('ru-RU');
-    elements.lastUpdate.textContent = `Обновлено: ${dateString} ${timeString}`;
-    elements.lastUpdate.style.color = appState.isOnline ? '#2ecc71' : '#e74c3c';
+    
+    const statusText = appState.isDemoMode ? 'ДЕМО-ДАННЫЕ' : 'Онлайн';
+    const statusColor = appState.isDemoMode ? '#f39c12' : '#27ae60';
+    
+    elements.lastUpdate.innerHTML = `
+        <i class="fas fa-clock"></i> ${timeString}
+        <span style="margin-left: 10px; color: ${statusColor}; font-weight: bold;">
+            ${statusText}
+        </span>
+    `;
 }
 
-// Показать демо-данные
-function showDemoData() {
-    console.log('Показываем демо-данные');
+// ==============================================
+// ДЕМО-РЕЖИМ
+// ==============================================
+
+function generateDemoData() {
+    console.log('Генерация демо-данных...');
     
-    // Генерируем реалистичные демо-данные
-    const demoStats = {
-        totalCats: Math.floor(Math.random() * 5000) + 1000,
-        totalAttacks: Math.floor(Math.random() * 1500) + 500,
-        avgSuccess: Math.floor(Math.random() * 30) + 50,
-        totalMatroskin: Math.floor(Math.random() * 100) + 20,
-        count: 22,
-        timestamp: new Date().toISOString()
-    };
-    
-    const demoPrestige = {
-        prestigeStats: {
-            "0": 5,
-            "1": 8,
-            "2": 4,
-            "3": 3,
-            "4": 2,
-            "5": 1
-        },
-        timestamp: new Date().toISOString()
-    };
-    
-    // Генерируем демо-данные игроков
-    const demoAllData = {};
-    const playerNames = [
-        "КотУченый", "Мурзик", "Барсик", "Рыжик", "Васька", 
-        "Мурка", "Снежок", "Пушистик", "Тигра", "Леопольд",
-        "Гарфилд", "Том", "Багира", "Матроскин", "Чеширский",
-        "Феликс", "Симба", "Луна", "Оскар", "Зевс", "Локи", "Тори"
+    const players = [
+        "ShadowCat", "MidnightWhisper", "GoldenPaw", "SilverFang", "EmeraldEyes",
+        "VelvetPaws", "ThunderTail", "Starlight", "Moonbeam", "WhiskerWizard",
+        "ShadowStalker", "CrimsonClaw", "SapphireGaze", "IronWhiskers", "VelvetShadow",
+        "AmberHunter", "OnyxProwler", "RubyRoamer", "JadeJumper", "TopazTracker",
+        "PlatinumPaw", "CopperCat", "Obsidian", "PearlPurrer", "DiamondDash"
     ];
     
-    playerNames.forEach(name => {
-        demoAllData[name] = {
-            cats: Math.floor(Math.random() * 500) + 50,
-            attacks: Math.floor(Math.random() * 150) + 20,
-            successful_attacks: Math.floor(Math.random() * 100) + 10,
-            matroskin: Math.floor(Math.random() * 10),
-            prestige_level: Math.floor(Math.random() * 6)
+    const demoAllData = {};
+    let totalCats = 0;
+    let totalAttacks = 0;
+    let totalSuccessfulAttacks = 0;
+    let totalMatroskin = 0;
+    const prestigeStats = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
+    
+    players.forEach((player, index) => {
+        const cats = Math.floor(Math.random() * 400) + 100;
+        const attacks = Math.floor(Math.random() * 150) + 30;
+        const successfulAttacks = Math.floor(attacks * (0.5 + Math.random() * 0.3));
+        const matroskin = Math.floor(Math.random() * 8);
+        const prestigeLevel = Math.floor(Math.random() * 6);
+        
+        demoAllData[player] = {
+            cats,
+            attacks,
+            successful_attacks: successfulAttacks,
+            matroskin,
+            prestige_level: prestigeLevel
         };
+        
+        totalCats += cats;
+        totalAttacks += attacks;
+        totalSuccessfulAttacks += successfulAttacks;
+        totalMatroskin += matroskin;
+        prestigeStats[prestigeLevel] = (prestigeStats[prestigeLevel] || 0) + 1;
     });
     
-    updateStats(demoStats);
-    updatePrestigeStats(demoPrestige);
-    updateTable(demoAllData);
-    updateTimestamp(demoStats.timestamp);
+    const avgSuccess = totalAttacks > 0 ? Math.round((totalSuccessfulAttacks / totalAttacks) * 100) : 0;
     
-    // Обновляем статус
-    elements.lastUpdate.textContent = 'ДЕМО-РЕЖИМ (сервер недоступен)';
-    elements.lastUpdate.style.color = '#f39c12';
-    
-    showNotification('Используются демо-данные. Сервер временно недоступен.', 'warning');
+    return {
+        stats: {
+            totalCats,
+            totalAttacks,
+            avgSuccess,
+            totalMatroskin,
+            count: players.length,
+            timestamp: new Date().toISOString()
+        },
+        prestige: {
+            prestigeStats,
+            timestamp: new Date().toISOString()
+        },
+        allData: demoAllData
+    };
 }
 
-// Показать ошибку
-function showError(message) {
-    // Удаляем старые сообщения об ошибках
-    document.querySelectorAll('.error-message').forEach(el => el.remove());
+function showDemoData() {
+    const demoData = generateDemoData();
+    appState.isDemoMode = true;
+    appState.isOnline = false;
     
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'error-message';
-    errorDiv.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #e74c3c;
-        color: white;
-        padding: 15px 20px;
-        border-radius: 10px;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        z-index: 1000;
-        max-width: 400px;
-        display: flex;
-        align-items: center;
-        animation: slideIn 0.3s ease;
-    `;
-    
-    errorDiv.innerHTML = `
-        <i class="fas fa-exclamation-triangle" style="margin-right: 10px; font-size: 1.2rem;"></i>
-        <div>${message}</div>
-    `;
-    
-    document.body.appendChild(errorDiv);
-    
-    // Добавляем стили для анимации
-    if (!document.querySelector('#error-styles')) {
-        const style = document.createElement('style');
-        style.id = 'error-styles';
-        style.textContent = `
-            @keyframes slideIn {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-            @keyframes slideOut {
-                from { transform: translateX(0); opacity: 1; }
-                to { transform: translateX(100%); opacity: 0; }
-            }
-        `;
-        document.head.appendChild(style);
-    }
-    
-    setTimeout(() => {
-        errorDiv.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => errorDiv.remove(), 300);
-    }, 5000);
+    updateUI(demoData.stats, demoData.prestige, demoData.allData);
+    showNotification('Используются демо-данные. Сервер недоступен.', 'warning');
+    updateConnectionStatus();
 }
 
-// Показать уведомление
+// ==============================================
+// УВЕДОМЛЕНИЯ И ОШИБКИ
+// ==============================================
+
 function showNotification(message, type = 'info') {
     // Удаляем старые уведомления
-    document.querySelectorAll('.notification').forEach(el => el.remove());
+    document.querySelectorAll('.app-notification').forEach(el => el.remove());
     
     const colors = {
-        success: '#2ecc71',
+        success: '#27ae60',
         warning: '#f39c12',
         info: '#3498db',
         error: '#e74c3c'
@@ -338,223 +400,400 @@ function showNotification(message, type = 'info') {
     };
     
     const notification = document.createElement('div');
-    notification.className = 'notification';
+    notification.className = 'app-notification';
+    notification.innerHTML = `
+        <i class="fas ${icons[type]}" style="margin-right: 10px;"></i>
+        <span>${message}</span>
+    `;
+    
     notification.style.cssText = `
         position: fixed;
         top: 20px;
         right: 20px;
-        background: ${colors[type] || colors.info};
+        background: ${colors[type]};
         color: white;
-        padding: 12px 18px;
+        padding: 12px 20px;
         border-radius: 8px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        z-index: 999;
-        max-width: 350px;
+        z-index: 10000;
         display: flex;
         align-items: center;
-        animation: slideIn 0.3s ease;
-    `;
-    
-    notification.innerHTML = `
-        <i class="fas ${icons[type] || icons.info}" style="margin-right: 10px; font-size: 1.1rem;"></i>
-        <div style="flex-grow: 1;">${message}</div>
+        animation: slideInRight 0.3s ease;
+        max-width: 400px;
+        word-break: break-word;
     `;
     
     document.body.appendChild(notification);
     
     setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease';
+        notification.style.animation = 'slideOutRight 0.3s ease';
         setTimeout(() => notification.remove(), 300);
-    }, 3000);
+    }, type === 'error' ? 8000 : 5000);
 }
 
-// Проверка соединения с сервером
-async function checkServerConnection() {
+// ==============================================
+// СТАТУС СОЕДИНЕНИЯ
+// ==============================================
+
+function updateConnectionStatus() {
+    let statusElement = document.getElementById('connectionStatus');
+    
+    if (!statusElement) {
+        statusElement = document.createElement('div');
+        statusElement.id = 'connectionStatus';
+        statusElement.style.cssText = `
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(10px);
+        `;
+        document.body.appendChild(statusElement);
+    }
+    
+    if (appState.isDemoMode) {
+        statusElement.innerHTML = `
+            <i class="fas fa-exclamation-triangle" style="color: #f39c12;"></i>
+            <span>Демо-режим</span>
+        `;
+        statusElement.style.background = 'rgba(243, 156, 18, 0.9)';
+    } else if (appState.isOnline) {
+        statusElement.innerHTML = `
+            <i class="fas fa-wifi" style="color: #27ae60;"></i>
+            <span>Онлайн</span>
+        `;
+        statusElement.style.background = 'rgba(39, 174, 96, 0.9)';
+    } else {
+        statusElement.innerHTML = `
+            <i class="fas fa-wifi-slash" style="color: #e74c3c;"></i>
+            <span>Оффлайн</span>
+        `;
+        statusElement.style.background = 'rgba(231, 76, 60, 0.9)';
+    }
+}
+
+// ==============================================
+// ОСНОВНАЯ ЛОГИКА
+// ==============================================
+
+async function fetchData() {
+    console.log(`[${getCurrentTime()}] Запрос данных...`);
+    
+    if (!appState.connectionChecked) {
+        appState.connectionChecked = true;
+        updateConnectionStatus();
+    }
+    
     try {
-        const response = await fetch(`${API_BASE}/stats`, {
-            method: 'HEAD',
-            mode: 'cors',
-            cache: 'no-cache'
-        });
-        return response.ok;
+        const data = await tryFetchData();
+        
+        appState.isOnline = true;
+        appState.isDemoMode = false;
+        appState.retryCount = 0;
+        
+        updateUI(data.stats, data.prestige, data.allData);
+        updateConnectionStatus();
+        
+        if (appState.retryCount > 0) {
+            showNotification('Соединение восстановлено!', 'success');
+        }
+        
+        return true;
+        
     } catch (error) {
+        console.error(`[${getCurrentTime()}] Ошибка:`, error.message);
+        
+        appState.isOnline = false;
+        appState.retryCount++;
+        
+        updateConnectionStatus();
+        
+        if (appState.retryCount >= CONFIG.RETRY_ATTEMPTS && CONFIG.DEMO_MODE_ENABLED) {
+            if (!appState.isDemoMode) {
+                appState.isDemoMode = true;
+                showDemoData();
+            }
+        } else {
+            showNotification(`Ошибка подключения (${appState.retryCount}/${CONFIG.RETRY_ATTEMPTS})`, 'error');
+        }
+        
         return false;
     }
 }
 
-// Обновление статуса соединения
-function updateConnectionStatus() {
-    const statusIndicator = document.getElementById('connectionStatus') || createStatusIndicator();
-    
-    if (appState.isOnline) {
-        statusIndicator.innerHTML = '<i class="fas fa-wifi"></i> Онлайн';
-        statusIndicator.style.color = '#2ecc71';
-    } else {
-        statusIndicator.innerHTML = '<i class="fas fa-wifi-slash"></i> Оффлайн';
-        statusIndicator.style.color = '#e74c3c';
-    }
-}
+// ==============================================
+// ИНИЦИАЛИЗАЦИЯ И КОНТРОЛЛЕРЫ
+// ==============================================
 
-// Создание индикатора статуса
-function createStatusIndicator() {
-    const header = document.querySelector('.header');
-    const statusDiv = document.createElement('div');
-    statusDiv.id = 'connectionStatus';
-    statusDiv.style.cssText = `
-        position: absolute;
-        top: 20px;
-        right: 20px;
-        background: rgba(255,255,255,0.2);
-        padding: 5px 12px;
-        border-radius: 20px;
-        font-size: 0.85rem;
-        display: flex;
-        align-items: center;
-        gap: 5px;
-    `;
-    header.appendChild(statusDiv);
-    return statusDiv;
-}
-
-// Обновление данных каждую секунду
-function startAutoRefresh() {
-    console.log('Запуск автообновления данных...');
+function setupAutoRefresh() {
+    // Первый запрос
+    setTimeout(() => fetchData(), 1000);
     
-    // Первоначальная загрузка
-    fetchData();
-    
-    // Обновление каждые 5 секунд (вместо 1 секунды, чтобы не нагружать)
+    // Интервальное обновление
     setInterval(() => {
-        if (appState.isOnline) {
+        if (!appState.isDemoMode || appState.retryCount < CONFIG.RETRY_ATTEMPTS) {
             fetchData();
         }
-    }, 5000);
-    
-    // Проверка соединения каждые 30 секунд
-    setInterval(async () => {
-        const isConnected = await checkServerConnection();
-        if (isConnected !== appState.isOnline) {
-            appState.isOnline = isConnected;
-            updateConnectionStatus();
-            
-            if (isConnected) {
-                showNotification('Соединение с сервером восстановлено', 'success');
-                fetchData();
-            } else {
-                showNotification('Потеряно соединение с сервером', 'warning');
-            }
-        }
-    }, 30000);
+    }, CONFIG.AUTO_REFRESH_INTERVAL);
 }
 
-// Инициализация при загрузке страницы
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('Страница загружена, инициализация...');
-    console.log('API Base URL:', API_BASE);
-    console.log('Stats API:', STATS_API);
+function setupManualRefreshButton() {
+    const button = document.createElement('button');
+    button.id = 'manualRefreshBtn';
+    button.innerHTML = `
+        <i class="fas fa-sync-alt"></i>
+        <span>Обновить</span>
+    `;
     
-    // Создаем индикатор статуса
-    createStatusIndicator();
-    updateConnectionStatus();
-    
-    // Запускаем автообновление
-    startAutoRefresh();
-    
-    // Добавляем кнопку для ручного обновления
-    const updateBtn = document.createElement('button');
-    updateBtn.innerHTML = '<i class="fas fa-redo"></i> Обновить';
-    updateBtn.style.cssText = `
+    button.style.cssText = `
         position: fixed;
         bottom: 20px;
         right: 20px;
-        background: #3498db;
+        background: linear-gradient(135deg, #3498db, #2980b9);
         color: white;
         border: none;
-        padding: 10px 20px;
+        padding: 12px 24px;
         border-radius: 25px;
         cursor: pointer;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        z-index: 100;
+        font-size: 14px;
+        font-weight: 500;
+        z-index: 10000;
         display: flex;
         align-items: center;
         gap: 8px;
-        font-family: inherit;
-        font-size: 14px;
+        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
         transition: all 0.3s ease;
+        font-family: inherit;
     `;
     
-    updateBtn.onmouseover = () => {
-        updateBtn.style.transform = 'translateY(-2px)';
-        updateBtn.style.boxShadow = '0 6px 16px rgba(0,0,0,0.25)';
-    };
+    button.addEventListener('mouseenter', () => {
+        button.style.transform = 'translateY(-2px)';
+        button.style.boxShadow = '0 6px 20px rgba(52, 152, 219, 0.4)';
+    });
     
-    updateBtn.onmouseout = () => {
-        updateBtn.style.transform = 'translateY(0)';
-        updateBtn.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
-    };
+    button.addEventListener('mouseleave', () => {
+        button.style.transform = 'translateY(0)';
+        button.style.boxShadow = '0 4px 15px rgba(52, 152, 219, 0.3)';
+    });
     
-    updateBtn.onclick = () => {
-        updateBtn.disabled = true;
-        updateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Обновление...';
-        updateBtn.style.opacity = '0.7';
+    button.addEventListener('click', async () => {
+        const icon = button.querySelector('i');
+        const originalIcon = icon.className;
         
-        fetchData().finally(() => {
-            setTimeout(() => {
-                updateBtn.disabled = false;
-                updateBtn.innerHTML = '<i class="fas fa-redo"></i> Обновить';
-                updateBtn.style.opacity = '1';
-            }, 1000);
-        });
-    };
+        button.disabled = true;
+        icon.className = 'fas fa-spinner fa-spin';
+        
+        await fetchData();
+        
+        setTimeout(() => {
+            button.disabled = false;
+            icon.className = originalIcon;
+        }, 1000);
+    });
     
-    document.body.appendChild(updateBtn);
-    
-    // Добавляем информацию о сервере
-    const serverInfo = document.createElement('div');
-    serverInfo.innerHTML = `
-        <div style="position: fixed; bottom: 20px; left: 20px; background: rgba(0,0,0,0.7); color: white; padding: 8px 15px; border-radius: 20px; font-size: 0.8rem; z-index: 100;">
-            <i class="fas fa-server"></i> Сервер: ${API_BASE || 'локальный'}
-        </div>
-    `;
-    document.body.appendChild(serverInfo);
-    
-    // Показываем стартовое сообщение
-    setTimeout(() => {
-        showNotification('Статистика котов загружена. Данные обновляются автоматически.', 'info');
-    }, 1000);
-});
+    document.body.appendChild(button);
+}
 
-// Добавляем CSS для престижных бейджей
-document.head.insertAdjacentHTML('beforeend', `
-    <style>
+function setupServerInfo() {
+    const info = document.createElement('div');
+    info.id = 'serverInfo';
+    info.innerHTML = `
+        <i class="fas fa-server"></i>
+        <span>Сервер: ${CONFIG.SERVER_URL.replace('http://', '')}</span>
+    `;
+    
+    info.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        backdrop-filter: blur(10px);
+    `;
+    
+    document.body.appendChild(info);
+}
+
+function setupGlobalStyles() {
+    const styles = document.createElement('style');
+    styles.textContent = `
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes slideOutRight {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
         .prestige-badge {
             display: inline-block;
-            padding: 3px 8px;
-            border-radius: 12px;
-            background: #ecf0f1;
-            color: #2c3e50;
+            padding: 4px 10px;
+            border-radius: 15px;
             font-weight: bold;
             font-size: 0.85rem;
-            min-width: 24px;
+            min-width: 30px;
             text-align: center;
-        }
-        
-        .prestige-high {
-            background: linear-gradient(135deg, #ffd166, #f39c12);
             color: white;
         }
         
-        .prestige-medium {
-            background: linear-gradient(135deg, #4a6fa5, #166088);
-            color: white;
+        .prestige-common {
+            background: #7f8c8d;
         }
         
-        .no-data {
-            grid-column: 1 / -1;
-            text-align: center;
-            padding: 30px;
-            color: #95a5a6;
-            font-style: italic;
+        .prestige-rare {
+            background: linear-gradient(135deg, #3498db, #2980b9);
         }
-    </style>
-`);
+        
+        .prestige-epic {
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+        }
+        
+        .prestige-legendary {
+            background: linear-gradient(135deg, #f39c12, #d35400);
+            box-shadow: 0 0 10px rgba(243, 156, 18, 0.5);
+        }
+        
+        .prestige-item {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            transition: transform 0.2s;
+        }
+        
+        .prestige-item:hover {
+            transform: translateY(-3px);
+        }
+        
+        .prestige-level {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        
+        .prestige-count {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+        }
+        
+        .prestige-percentage {
+            font-size: 0.8rem;
+            color: #3498db;
+            margin-top: 3px;
+        }
+        
+        .fa-spinner {
+            animation: spin 1s linear infinite;
+        }
+        
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            #manualRefreshBtn {
+                bottom: 10px;
+                right: 10px;
+                padding: 10px 20px;
+                font-size: 13px;
+            }
+            
+            #connectionStatus, #serverInfo {
+                bottom: 10px;
+                left: 10px;
+                font-size: 0.7rem;
+                padding: 6px 12px;
+            }
+            
+            #connectionStatus {
+                top: 60px;
+                right: 10px;
+            }
+        }
+    `;
+    
+    document.head.appendChild(styles);
+}
+
+// ==============================================
+// ТОЧКА ВХОДА
+// ==============================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('🐱 Статистика котов инициализируется...');
+    console.log('Конфигурация:', CONFIG);
+    console.log('Текущий URL:', window.location.href);
+    console.log('Протокол:', window.location.protocol);
+    
+    // Настройка глобальных стилей
+    setupGlobalStyles();
+    
+    // Настройка интерфейса
+    setupManualRefreshButton();
+    setupServerInfo();
+    updateConnectionStatus();
+    
+    // Начальная загрузка данных
+    setupAutoRefresh();
+    
+    // Показываем приветственное сообщение
+    setTimeout(() => {
+        if (!appState.isOnline) {
+            showNotification('Загрузка данных...', 'info');
+        }
+    }, 500);
+    
+    // Проверяем доступность сервера
+    checkServerAvailability();
+});
+
+async function checkServerAvailability() {
+    try {
+        const response = await fetch(`${CONFIG.SERVER_URL}/stats`, {
+            method: 'HEAD',
+            mode: 'no-cors' // no-cors для простой проверки
+        });
+        
+        console.log('Сервер доступен');
+        appState.isOnline = true;
+    } catch (error) {
+        console.log('Сервер недоступен, переходим в демо-режим');
+        if (CONFIG.DEMO_MODE_ENABLED) {
+            showDemoData();
+        }
+    }
+    
+    updateConnectionStatus();
+}
+
+// Экспортируем функции для отладки
+window.appDebug = {
+    getState: () => appState,
+    getConfig: () => CONFIG,
+    forceDemoMode: () => showDemoData(),
+    forceRefresh: () => fetchData(),
+    checkConnection: () => checkServerAvailability()
+};
+
+console.log('✅ Скрипт загружен и готов к работе');
