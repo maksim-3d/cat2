@@ -3,207 +3,265 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cats Stats</title>
+    <title>🐱 Статистика котов</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
-        .container { max-width: 500px; margin: 0 auto; background: white; border-radius: 20px; padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
-        .header { text-align: center; margin-bottom: 30px; }
-        .header h1 { color: #333; font-size: 24px; margin-bottom: 10px; }
-        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
-        .stat-card { background: #f8f9fa; padding: 20px; border-radius: 15px; text-align: center; border: 2px solid transparent; transition: all 0.3s; }
-        .stat-card:hover { border-color: #667eea; transform: translateY(-2px); }
-        .stat-card h3 { color: #666; font-size: 14px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
-        .stat-card .value { font-size: 32px; font-weight: bold; color: #333; }
-        .loading { text-align: center; padding: 50px; color: #666; }
-        .error { text-align: center; padding: 20px; color: #e74c3c; background: #ffe6e6; border-radius: 10px; margin-top: 20px; }
-        .refresh-btn { display: block; width: 100%; padding: 15px; background: #667eea; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 20px; transition: all 0.3s; }
-        .refresh-btn:hover { background: #5a67d8; transform: scale(1.02); }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 100%;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        .stat-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .refresh-btn {
+            width: 100%;
+            padding: 18px;
+            background: #0088cc;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+        .refresh-btn:hover {
+            background: #0077bb;
+            transform: scale(1.02);
+        }
+        .timestamp {
+            text-align: center;
+            color: rgba(255,255,255,0.7);
+            font-size: 12px;
+            margin-top: 15px;
+            font-style: italic;
+        }
+        .error {
+            background: rgba(255, 50, 50, 0.2);
+            border: 1px solid rgba(255, 50, 50, 0.5);
+            border-radius: 10px;
+            padding: 15px;
+            color: white;
+            text-align: center;
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🐱 Статистика Котов</h1>
-            <p id="timestamp">Загрузка...</p>
+            <h1>🐱 Статистика котов</h1>
+            <p>Реальные данные в реальном времени</p>
         </div>
         
-        <div id="stats-container" class="loading">
-            <div style="text-align: center;">
-                <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px;"></div>
-                Загрузка данных...
+        <div id="stats">
+            <div class="loading">
+                <div class="spinner"></div>
+                <div>Загрузка данных...</div>
             </div>
         </div>
         
-        <button id="refreshBtn" class="refresh-btn">🔄 Обновить</button>
+        <button onclick="loadStats()" class="refresh-btn">🔄 Обновить</button>
         
-        <div id="errorContainer" class="error" style="display: none;"></div>
+        <div id="error" class="error" style="display: none;"></div>
+        
+        <div class="timestamp" id="timestamp"></div>
     </div>
 
     <script>
-        // Инициализация Telegram WebApp
+        // Telegram WebApp
         const tg = window.Telegram.WebApp;
         tg.expand();
         tg.ready();
         
-        // Стили для Telegram
-        tg.setHeaderColor('#667eea');
-        tg.setBackgroundColor('#f0f0f0');
+        // URL вашего HTTPS сервера
+        const SERVER_URL = 'https://78.40.188.120:3443';
         
-        // Анимация загрузки
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-        `;
-        document.head.appendChild(style);
-        
-        // Конфигурация сервера
-        const SERVER_URL = 'http://78.40.188.120:3000'; // Используем HTTP для простоты
-        
-        // Кэш для данных
-        let cachedData = null;
-        let lastUpdate = null;
-        
-        // Основная функция загрузки данных
+        // Функция загрузки данных
         async function loadStats() {
-            console.log('Loading stats from:', SERVER_URL);
-            
-            const statsContainer = document.getElementById('stats-container');
-            const errorContainer = document.getElementById('errorContainer');
-            const timestampElement = document.getElementById('timestamp');
+            console.log('Загружаю данные с HTTPS сервера:', SERVER_URL);
             
             // Показываем загрузку
-            errorContainer.style.display = 'none';
-            statsContainer.innerHTML = `
-                <div style="text-align: center;">
-                    <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px;"></div>
-                    Загрузка данных...
-                </div>
-            `;
+            showLoading();
             
             try {
-                // Telegram Mini Apps могут блокировать прямые запросы, используем прокси
-                const response = await fetchWithFallback(`${SERVER_URL}/stats`);
+                // Пробуем обычный fetch
+                const response = await fetch(`${SERVER_URL}/stats`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
                 
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
                 const data = await response.json();
-                cachedData = data;
-                lastUpdate = new Date();
-                
-                // Отображаем данные
+                console.log('Данные получены:', data);
                 displayStats(data);
-                
-                // Обновляем время
-                timestampElement.textContent = `Обновлено: ${new Date().toLocaleTimeString()}`;
+                hideError();
                 
             } catch (error) {
-                console.error('Error loading stats:', error);
-                
-                // Показываем кэшированные данные если есть
-                if (cachedData) {
-                    displayStats(cachedData);
-                    errorContainer.innerHTML = `<strong>Внимание:</strong> Не удалось обновить данные. Показаны данные от ${lastUpdate.toLocaleTimeString()}`;
-                    errorContainer.style.display = 'block';
-                } else {
-                    statsContainer.innerHTML = '<div class="error">Не удалось загрузить данные</div>';
-                }
+                console.warn('Fetch не сработал:', error, 'Пробуем JSONP...');
+                loadWithJSONP();
             }
         }
         
-        // Функция с fallback методами
-        async function fetchWithFallback(url) {
-            try {
-                // Метод 1: Прямой запрос
-                return await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Cache-Control': 'no-cache'
-                    }
-                });
-            } catch (error) {
-                console.log('Direct fetch failed, trying JSONP...');
-                
-                // Метод 2: JSONP через прокси
-                return new Promise((resolve, reject) => {
-                    window.jsonpCallback = function(data) {
-                        resolve({
-                            ok: true,
-                            json: () => Promise.resolve(data)
-                        });
-                    };
-                    
-                    const script = document.createElement('script');
-                    script.src = `${url}?callback=jsonpCallback&_=${Date.now()}`;
-                    script.onerror = reject;
-                    document.head.appendChild(script);
-                });
-            }
-        }
-        
-        // Отображение статистики
-        function displayStats(data) {
-            const statsContainer = document.getElementById('stats-container');
+        // JSONP fallback
+        function loadWithJSONP() {
+            // Удаляем старый скрипт
+            const oldScript = document.querySelector('script[data-jsonp]');
+            if (oldScript) oldScript.remove();
             
-            const html = `
+            // Создаем callback
+            window.jsonpCallback = function(data) {
+                console.log('Данные через JSONP:', data);
+                displayStats(data);
+                hideError();
+            };
+            
+            // Создаем script
+            const script = document.createElement('script');
+            const url = `${SERVER_URL}/stats?callback=jsonpCallback&_=${Date.now()}`;
+            script.src = url;
+            script.setAttribute('data-jsonp', 'true');
+            
+            script.onerror = function() {
+                showError('Не удалось подключиться к серверу. Проверьте:<br>1. Сервер запущен<br>2. Адрес: ' + SERVER_URL);
+            };
+            
+            document.head.appendChild(script);
+        }
+        
+        // Отображение данных
+        function displayStats(data) {
+            document.getElementById('stats').innerHTML = `
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <h3>Всего котов</h3>
-                        <div class="value">${formatNumber(data.totalCats || 0)}</div>
+                        <div class="stat-value">${formatNumber(data.totalCats || 0)}</div>
+                        <div class="stat-label">Всего котов</div>
                     </div>
                     <div class="stat-card">
-                        <h3>Всего атак</h3>
-                        <div class="value">${formatNumber(data.totalAttacks || 0)}</div>
+                        <div class="stat-value">${formatNumber(data.totalAttacks || 0)}</div>
+                        <div class="stat-label">Всего атак</div>
                     </div>
                     <div class="stat-card">
-                        <h3>Успешность</h3>
-                        <div class="value">${data.avgSuccess || 0}%</div>
+                        <div class="stat-value">${data.avgSuccess || 0}%</div>
+                        <div class="stat-label">Успешность</div>
                     </div>
                     <div class="stat-card">
-                        <h3>Матросскины</h3>
-                        <div class="value">${formatNumber(data.totalMatroskin || 0)}</div>
+                        <div class="stat-value">${formatNumber(data.totalMatroskin || 0)}</div>
+                        <div class="stat-label">Матросскины</div>
                     </div>
                     <div class="stat-card">
-                        <h3>Игроков</h3>
-                        <div class="value">${data.count || 0}</div>
+                        <div class="stat-value">${data.count || 0}</div>
+                        <div class="stat-label">Игроков</div>
                     </div>
                     <div class="stat-card">
-                        <h3>Время</h3>
-                        <div class="value">${new Date(data.timestamp).toLocaleTimeString()}</div>
+                        <div class="stat-value">${new Date(data.timestamp).getHours()}:${String(new Date(data.timestamp).getMinutes()).padStart(2, '0')}</div>
+                        <div class="stat-label">Время</div>
                     </div>
                 </div>
             `;
             
-            statsContainer.innerHTML = html;
+            document.getElementById('timestamp').textContent = 
+                `Обновлено: ${new Date(data.timestamp).toLocaleTimeString()}`;
         }
         
-        // Форматирование чисел
+        // Вспомогательные функции
         function formatNumber(num) {
             if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
             if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-            return num.toString();
+            return num;
+        }
+        
+        function showLoading() {
+            document.getElementById('stats').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <div>Загрузка данных...</div>
+                </div>
+            `;
+        }
+        
+        function showError(message) {
+            document.getElementById('error').innerHTML = message;
+            document.getElementById('error').style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
         }
         
         // Инициализация
         document.addEventListener('DOMContentLoaded', function() {
-            // Кнопка обновления
-            document.getElementById('refreshBtn').addEventListener('click', loadStats);
-            
             // Загружаем данные сразу
             loadStats();
             
             // Автообновление каждые 30 секунд
             setInterval(loadStats, 30000);
-            
-            // Сообщаем Telegram что приложение загружено
-            tg.ready();
         });
     </script>
 </body>
