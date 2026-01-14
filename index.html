@@ -60,19 +60,6 @@
         // Рабочие CORS прокси (проверены)
         const WORKING_PROXIES = [
             {
-                name: 'AllOrigins',
-                getUrl: (url) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-                parseResponse: async (response) => {
-                    const data = await response.json();
-                    return JSON.parse(data.contents);
-                }
-            },
-            {
-                name: 'CorsProxy',
-                getUrl: (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-                parseResponse: async (response) => await response.json()
-            },
-            {
                 name: 'GitHubProxy',
                 getUrl: (url) => `https://api.codetabs.com/v1/proxy?quest=${url}`,
                 parseResponse: async (response) => await response.json()
