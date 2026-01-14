@@ -236,106 +236,71 @@
         </div>
         
         <div id="content" style="display: none;">
-            <!-- Основные карточки статистики -->
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="fas fa-cat"></i>
-                    </div>
+                    <div class="stat-icon"><i class="fas fa-cat"></i></div>
                     <div class="stat-value" id="totalCats">0</div>
                     <div class="stat-label">Всего котов</div>
                 </div>
-                
                 <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="fas fa-crosshairs"></i>
-                    </div>
+                    <div class="stat-icon"><i class="fas fa-crosshairs"></i></div>
                     <div class="stat-value" id="totalAttacks">0</div>
                     <div class="stat-label">Всего атак</div>
                 </div>
-                
                 <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="fas fa-chart-line"></i>
-                    </div>
+                    <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
                     <div class="stat-value" id="avgSuccess">0%</div>
                     <div class="stat-label">Успешных атак</div>
                 </div>
-                
                 <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="fas fa-crown"></i>
-                    </div>
+                    <div class="stat-icon"><i class="fas fa-crown"></i></div>
                     <div class="stat-value" id="totalMatroskin">0</div>
                     <div class="stat-label">Котов Матроскиных</div>
                 </div>
             </div>
             
-            <!-- Детальная информация -->
             <div class="stat-details">
                 <div class="details-header">
                     <h2><i class="fas fa-info-circle"></i> Детальная информация</h2>
                     <div class="timestamp" id="timestamp">Загрузка...</div>
                 </div>
-                
                 <div class="details-grid">
-                    <div class="detail-item">
-                        <div class="detail-label">Количество в базе</div>
-                        <div class="detail-value" id="count">0</div>
-                    </div>
-                    
-                    <div class="detail-item">
-                        <div class="detail-label">Статус данных</div>
-                        <div class="detail-value" id="dataStatus">Проверка...</div>
-                    </div>
-                    
-                    <div class="detail-item">
-                        <div class="detail-label">Источник</div>
-                        <div class="detail-value">GitHub</div>
-                    </div>
-                    
-                    <div class="detail-item">
-                        <div class="detail-label">Последнее обновление</div>
-                        <div class="detail-value" id="lastUpdate">—</div>
-                    </div>
+                    <div class="detail-item"><div class="detail-label">Количество в базе</div><div class="detail-value" id="count">0</div></div>
+                    <div class="detail-item"><div class="detail-label">Статус данных</div><div class="detail-value" id="dataStatus">Проверка...</div></div>
+                    <div class="detail-item"><div class="detail-label">Источник</div><div class="detail-value">GitHub</div></div>
+                    <div class="detail-item"><div class="detail-label">Последнее обновление</div><div class="detail-value" id="lastUpdate">—</div></div>
                 </div>
-                
                 <div id="noteContainer"></div>
             </div>
             
-            <!-- Управление -->
             <div class="controls">
-                <button class="btn" id="refreshBtn">
-                    <i class="fas fa-sync-alt"></i> Обновить данные
-                </button>
-                <div class="status-bar" id="statusBar">
-                    Статус: <span id="statusText">Загрузка...</span>
-                </div>
+                <button class="btn" id="refreshBtn"><i class="fas fa-sync-alt"></i> Обновить данные</button>
+                <div class="status-bar" id="statusBar">Статус: <span id="statusText">Загрузка...</span></div>
             </div>
         </div>
     </div>
 
     <script>
-        // Конфигурация
+        // ПРОСТОЙ РАБОЧИЙ ВАРИАНТ БЕЗ CORS ПРОБЛЕМ
         const CONFIG = {
-            DATA_URL: 'https://api.github.com/repos/maksim-3d/cat2/contents/data.json',
-            UPDATE_INTERVAL: 1000, // 30 секунд
-            GITHUB_PAGES_URL: 'https://maksim-3d.github.io/cat2/'
+            // Используем простой GET-запрос без сложных заголовков
+            DATA_URL: 'data.json', // Локальный файл в том же каталоге
+            UPDATE_INTERVAL: 30000
         };
         
-        // Элементы DOM
+        // Если файл data.json есть в репозитории, он будет доступен
+        // по адресу: https://maksim-3d.github.io/cat2/data.json
+        
         const loadingElement = document.getElementById('loading');
         const contentElement = document.getElementById('content');
         const refreshBtn = document.getElementById('refreshBtn');
         const statusText = document.getElementById('statusText');
         const statusBar = document.getElementById('statusBar');
         
-        // Функция форматирования чисел
         function formatNumber(num) {
             return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
         }
         
-        // Функция форматирования даты
         function formatDate(timestamp) {
             const date = new Date(timestamp);
             return date.toLocaleString('ru-RU', {
@@ -348,7 +313,6 @@
             });
         }
         
-        // Функция для расчета времени с последнего обновления
         function getTimeAgo(timestamp) {
             const now = new Date();
             const updateTime = new Date(timestamp);
@@ -357,36 +321,19 @@
             const diffMin = Math.floor(diffSec / 60);
             const diffHour = Math.floor(diffMin / 60);
             
-            if (diffSec < 60) {
-                return `${diffSec} секунд назад`;
-            } else if (diffMin < 60) {
-                return `${diffMin} минут назад`;
-            } else {
-                return `${diffHour} часов назад`;
-            }
+            if (diffSec < 60) return `${diffSec} сек назад`;
+            else if (diffMin < 60) return `${diffMin} мин назад`;
+            else return `${diffHour} ч назад`;
         }
         
-        // Основная функция загрузки данных
         async function loadData() {
             try {
-                // Показываем статус загрузки
                 statusText.textContent = 'Загрузка...';
                 statusBar.className = 'status-bar';
                 
-                // Делаем запрос к данным с таймаутом
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000);
-                
-                const response = await fetch(CONFIG.DATA_URL + '?t=' + Date.now(), {
-                    signal: controller.signal,
-                    headers: {
-                        'Cache-Control': 'no-cache, no-store, must-revalidate',
-                        'Pragma': 'no-cache',
-                        'Expires': '0'
-                    }
-                });
-                
-                clearTimeout(timeoutId);
+                // Простой запрос к локальному файлу
+                // На GitHub Pages файл data.json будет доступен по относительному пути
+                const response = await fetch(CONFIG.DATA_URL + '?t=' + Date.now());
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -394,79 +341,52 @@
                 
                 const data = await response.json();
                 
-                // Обновляем UI с данными
-                updateUI(data);
-                
-                // Показываем успешный статус
-                statusText.textContent = 'Данные загружены';
-                statusBar.className = 'status-bar status-online';
-                
-                return data;
+                // Проверяем структуру данных
+                if (data && typeof data.totalCats === 'number') {
+                    updateUI(data);
+                    statusText.textContent = 'Данные загружены';
+                    statusBar.className = 'status-bar status-online';
+                    return data;
+                } else {
+                    throw new Error('Некорректный формат данных');
+                }
                 
             } catch (error) {
-                console.error('Ошибка загрузки данных:', error);
-                
-                // Показываем ошибку
+                console.warn('Ошибка загрузки:', error.message);
                 statusText.textContent = 'Ошибка загрузки';
                 statusBar.className = 'status-bar status-offline';
                 
-                // Показываем пользователю сообщение об ошибке
-                if (!document.getElementById('errorNote')) {
-                    const noteContainer = document.getElementById('noteContainer');
-                    noteContainer.innerHTML = `
-                        <div class="note" id="errorNote">
-                            <strong><i class="fas fa-exclamation-triangle"></i> Внимание:</strong> 
-                            Не удалось загрузить актуальные данные. Показаны последние сохранённые значения.
-                            ${error.message ? `<br><small>${error.message}</small>` : ''}
-                        </div>
-                    `;
-                }
-                
-                // Можно попробовать загрузить локальные данные, если они есть
-                const localData = localStorage.getItem('catStats');
-                if (localData) {
-                    try {
-                        const parsedData = JSON.parse(localData);
-                        updateUI(parsedData);
-                        statusText.textContent = 'Используются локальные данные';
-                    } catch (e) {
-                        // Если и локальные данные битые, показываем заглушки
-                        showDefaultData();
-                    }
-                } else {
-                    showDefaultData();
-                }
-                
+                // Показываем демо данные
+                showDemoData();
                 return null;
             }
         }
         
-        // Функция для отображения данных по умолчанию
-        function showDefaultData() {
-            const defaultData = {
-                totalCats: 1500,
-                totalAttacks: 3000,
-                avgSuccess: 65,
-                totalMatroskin: 50,
-                count: 25,
+        function showDemoData() {
+            const demoData = {
+                totalCats: Math.floor(Math.random() * 1000) + 1500,
+                totalAttacks: Math.floor(Math.random() * 2000) + 3000,
+                avgSuccess: Math.floor(Math.random() * 30) + 60,
+                totalMatroskin: Math.floor(Math.random() * 100) + 20,
+                count: Math.floor(Math.random() * 30) + 15,
                 timestamp: new Date().toISOString(),
-                note: 'Используются демо-данные'
+                note: 'Демо данные (не удалось загрузить data.json)'
             };
             
-            updateUI(defaultData);
+            updateUI(demoData);
             
             const noteContainer = document.getElementById('noteContainer');
             noteContainer.innerHTML = `
                 <div class="note">
-                    <strong><i class="fas fa-info-circle"></i> Информация:</strong> 
-                    Используются демонстрационные данные. Проверьте подключение к интернету и доступность репозитория.
+                    <strong><i class="fas fa-info-circle"></i> Внимание:</strong> 
+                    Используются демо-данные. Убедитесь, что файл data.json существует в репозитории.
+                    <br><small>Проверьте: https://maksim-3d.github.io/cat2/data.json</small>
                 </div>
             `;
         }
         
-        // Функция обновления интерфейса
         function updateUI(data) {
-            // Обновляем основные карточки
+            // Обновляем основные показатели
             document.getElementById('totalCats').textContent = formatNumber(data.totalCats);
             document.getElementById('totalAttacks').textContent = formatNumber(data.totalAttacks);
             document.getElementById('avgSuccess').textContent = data.avgSuccess + '%';
@@ -476,13 +396,20 @@
             document.getElementById('count').textContent = formatNumber(data.count);
             document.getElementById('timestamp').textContent = formatDate(data.timestamp);
             document.getElementById('lastUpdate').textContent = getTimeAgo(data.timestamp);
-            document.getElementById('dataStatus').textContent = data.note ? 'Демо' : 'Актуальные';
             
-            // Сохраняем данные локально
-            localStorage.setItem('catStats', JSON.stringify(data));
-            localStorage.setItem('catStatsTimestamp', Date.now().toString());
+            // Определяем статус данных
+            const isDemo = data.note && data.note.toLowerCase().includes('демо');
+            document.getElementById('dataStatus').textContent = isDemo ? 'Демо' : 'Актуальные';
             
-            // Если есть примечание, показываем его
+            // Сохраняем данные локально для офлайн-режима
+            try {
+                localStorage.setItem('catStats', JSON.stringify(data));
+                localStorage.setItem('catStatsTime', Date.now().toString());
+            } catch (e) {
+                console.warn('Не удалось сохранить в localStorage');
+            }
+            
+            // Отображаем примечание
             const noteContainer = document.getElementById('noteContainer');
             if (data.note) {
                 noteContainer.innerHTML = `
@@ -494,68 +421,56 @@
                 noteContainer.innerHTML = '';
             }
             
-            // Скрываем загрузку и показываем контент
+            // Показываем контент
             loadingElement.style.display = 'none';
             contentElement.style.display = 'block';
         }
         
-        // Функция инициализации
         async function init() {
-            // Загружаем данные сразу при загрузке страницы
+            // Сначала пробуем загрузить сохраненные данные
+            try {
+                const savedData = localStorage.getItem('catStats');
+                const savedTime = localStorage.getItem('catStatsTime');
+                
+                if (savedData && savedTime) {
+                    const data = JSON.parse(savedData);
+                    const timeDiff = Date.now() - parseInt(savedTime);
+                    
+                    // Если данные не старше 5 минут, показываем их
+                    if (timeDiff < 5 * 60 * 1000) {
+                        updateUI(data);
+                        statusText.textContent = 'Используются локальные данные';
+                        statusBar.className = 'status-bar';
+                    }
+                }
+            } catch (e) {
+                // Игнорируем ошибки localStorage
+            }
+            
+            // Затем загружаем актуальные данные
             await loadData();
             
-            // Обновляем данные каждые 30 секунд
+            // Настраиваем автообновление
             setInterval(loadData, CONFIG.UPDATE_INTERVAL);
             
-            // Добавляем обработчик кнопки обновления
+            // Настраиваем кнопку обновления
             refreshBtn.addEventListener('click', async () => {
+                const originalHtml = refreshBtn.innerHTML;
                 refreshBtn.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Обновление...';
                 refreshBtn.disabled = true;
                 
                 await loadData();
                 
-                refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Обновить данные';
-                refreshBtn.disabled = false;
-                
-                // Анимация подтверждения
-                refreshBtn.style.backgroundColor = '#10b981';
-                refreshBtn.style.color = 'white';
+                // Возвращаем исходное состояние кнопки
                 setTimeout(() => {
-                    refreshBtn.style.backgroundColor = '';
-                    refreshBtn.style.color = '';
-                }, 500);
+                    refreshBtn.innerHTML = originalHtml;
+                    refreshBtn.disabled = false;
+                }, 1000);
             });
-            
-            // Добавляем информацию о GitHub Pages
-            const controls = document.querySelector('.controls');
-            const githubLink = document.createElement('a');
-            githubLink.href = CONFIG.GITHUB_PAGES_URL;
-            githubLink.target = '_blank';
-            githubLink.className = 'btn';
-            githubLink.style.marginLeft = '10px';
-            githubLink.innerHTML = '<i class="fab fa-github"></i> GitHub Pages';
-            controls.appendChild(githubLink);
         }
         
-        // Запускаем приложение при загрузке страницы
+        // Запускаем при загрузке страницы
         document.addEventListener('DOMContentLoaded', init);
-        
-        // Добавляем анимацию при наведении на карточки
-        document.addEventListener('DOMContentLoaded', function() {
-            const statCards = document.querySelectorAll('.stat-card');
-            statCards.forEach(card => {
-                card.addEventListener('mouseenter', function() {
-                    const icon = this.querySelector('.stat-icon i');
-                    icon.style.transform = 'scale(1.2)';
-                    icon.style.transition = 'transform 0.3s ease';
-                });
-                
-                card.addEventListener('mouseleave', function() {
-                    const icon = this.querySelector('.stat-icon i');
-                    icon.style.transform = 'scale(1)';
-                });
-            });
-        });
     </script>
 </body>
 </html>
