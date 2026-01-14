@@ -5,221 +5,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Статистика котов</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 1200px;
-            width: 100%;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            color: white;
-        }
-        
-        .header h1 {
-            font-size: 3rem;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-        
-        .header p {
-            font-size: 1.2rem;
-            opacity: 0.9;
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 25px;
-            margin-bottom: 30px;
-        }
-        
-        .stat-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            text-align: center;
-        }
-        
-        .stat-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
-        }
-        
-        .stat-icon {
-            font-size: 3rem;
-            color: #667eea;
-            margin-bottom: 20px;
-        }
-        
-        .stat-value {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: #333;
-            margin-bottom: 10px;
-        }
-        
-        .stat-label {
-            font-size: 1.2rem;
-            color: #666;
-            font-weight: 600;
-        }
-        
-        .stat-details {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            margin-bottom: 30px;
-        }
-        
-        .details-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #f0f0f0;
-        }
-        
-        .details-header h2 {
-            color: #333;
-            font-size: 1.8rem;
-        }
-        
-        .timestamp {
-            color: #666;
-            font-size: 0.9rem;
-        }
-        
-        .details-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-        }
-        
-        .detail-item {
-            padding: 15px;
-            background: #f8f9ff;
-            border-radius: 10px;
-        }
-        
-        .detail-label {
-            font-weight: 600;
-            color: #555;
-            margin-bottom: 5px;
-        }
-        
-        .detail-value {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: #333;
-        }
-        
-        .controls {
-            text-align: center;
-            margin-top: 30px;
-        }
-        
-        .btn {
-            background: white;
-            color: #667eea;
-            border: none;
-            padding: 15px 40px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .btn:hover {
-            background: #667eea;
-            color: white;
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-        }
-        
-        .status-bar {
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 50px;
-            padding: 15px 30px;
-            margin-top: 20px;
-            display: inline-block;
-            font-weight: 600;
-        }
-        
-        .status-online {
-            color: #10b981;
-        }
-        
-        .status-offline {
-            color: #ef4444;
-        }
-        
-        .note {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
-            font-size: 0.95rem;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 50px;
-            color: white;
-            font-size: 1.5rem;
-        }
-        
-        .loading i {
-            font-size: 2rem;
-            margin-bottom: 15px;
-            display: block;
-        }
-        
+        /* Стили остаются прежними */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+        .container { max-width: 1200px; width: 100%; }
+        .header { text-align: center; margin-bottom: 30px; color: white; }
+        .header h1 { font-size: 3rem; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .header p { font-size: 1.2rem; opacity: 0.9; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 25px; margin-bottom: 30px; }
+        .stat-card { background: rgba(255, 255, 255, 0.95); border-radius: 20px; padding: 30px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); transition: transform 0.3s ease, box-shadow 0.3s ease; text-align: center; }
+        .stat-card:hover { transform: translateY(-10px); box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3); }
+        .stat-icon { font-size: 3rem; color: #667eea; margin-bottom: 20px; }
+        .stat-value { font-size: 2.5rem; font-weight: 800; color: #333; margin-bottom: 10px; }
+        .stat-label { font-size: 1.2rem; color: #666; font-weight: 600; }
+        .stat-details { background: rgba(255, 255, 255, 0.95); border-radius: 20px; padding: 30px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); margin-bottom: 30px; }
+        .details-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 2px solid #f0f0f0; }
+        .details-header h2 { color: #333; font-size: 1.8rem; }
+        .timestamp { color: #666; font-size: 0.9rem; }
+        .details-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+        .detail-item { padding: 15px; background: #f8f9ff; border-radius: 10px; }
+        .detail-label { font-weight: 600; color: #555; margin-bottom: 5px; }
+        .detail-value { font-size: 1.3rem; font-weight: 700; color: #333; }
+        .controls { text-align: center; margin-top: 30px; }
+        .btn { background: white; color: #667eea; border: none; padding: 15px 40px; font-size: 1.1rem; font-weight: 600; border-radius: 50px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); display: inline-flex; align-items: center; gap: 10px; }
+        .btn:hover { background: #667eea; color: white; transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3); }
+        .status-bar { background: rgba(255, 255, 255, 0.9); border-radius: 50px; padding: 15px 30px; margin-top: 20px; display: inline-block; font-weight: 600; }
+        .status-online { color: #10b981; }
+        .status-offline { color: #ef4444; }
+        .note { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 8px; margin-top: 20px; font-size: 0.95rem; }
+        .loading { text-align: center; padding: 50px; color: white; font-size: 1.5rem; }
+        .loading i { font-size: 2rem; margin-bottom: 15px; display: block; }
         @media (max-width: 768px) {
-            .header h1 {
-                font-size: 2rem;
-            }
-            
-            .stat-card {
-                padding: 20px;
-            }
-            
-            .stat-value {
-                font-size: 2rem;
-            }
-            
-            .details-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 10px;
-            }
+            .header h1 { font-size: 2rem; }
+            .stat-card { padding: 20px; }
+            .stat-value { font-size: 2rem; }
+            .details-header { flex-direction: column; align-items: flex-start; gap: 10px; }
         }
     </style>
 </head>
@@ -227,12 +51,12 @@
     <div class="container">
         <div class="header">
             <h1><i class="fas fa-cat"></i> Статистика котов</h1>
-            <p>Актуальные данные в реальном времени</p>
+            <p id="pageInfo">Загрузка данных...</p>
         </div>
         
         <div id="loading" class="loading">
             <i class="fas fa-paw fa-spin"></i>
-            Загружаем данные...
+            <div id="loadingText">Загружаем данные...</div>
         </div>
         
         <div id="content" style="display: none;">
@@ -265,103 +89,187 @@
                     <div class="timestamp" id="timestamp">Загрузка...</div>
                 </div>
                 <div class="details-grid">
-                    <div class="detail-item"><div class="detail-label">Количество в базе</div><div class="detail-value" id="count">0</div></div>
-                    <div class="detail-item"><div class="detail-label">Статус данных</div><div class="detail-value" id="dataStatus">Проверка...</div></div>
-                    <div class="detail-item"><div class="detail-label">Источник</div><div class="detail-value">GitHub</div></div>
-                    <div class="detail-item"><div class="detail-label">Последнее обновление</div><div class="detail-value" id="lastUpdate">—</div></div>
+                    <div class="detail-item">
+                        <div class="detail-label">Количество в базе</div>
+                        <div class="detail-value" id="count">0</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Статус данных</div>
+                        <div class="detail-value" id="dataStatus">Проверка...</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Версия данных</div>
+                        <div class="detail-value" id="dataVersion">—</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Последнее обновление</div>
+                        <div class="detail-value" id="lastUpdate">—</div>
+                    </div>
                 </div>
                 <div id="noteContainer"></div>
             </div>
             
             <div class="controls">
-                <button class="btn" id="refreshBtn"><i class="fas fa-sync-alt"></i> Обновить данные</button>
-                <div class="status-bar" id="statusBar">Статус: <span id="statusText">Загрузка...</span></div>
+                <button class="btn" id="refreshBtn">
+                    <i class="fas fa-sync-alt"></i> Обновить данные
+                </button>
+                <button class="btn" id="forceRefreshBtn" style="background: #f0b90b; color: #000;">
+                    <i class="fas fa-bolt"></i> Принудительное обновление
+                </button>
+                <div class="status-bar" id="statusBar">
+                    Статус: <span id="statusText">Загрузка...</span>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // ПРОСТОЙ РАБОЧИЙ ВАРИАНТ БЕЗ CORS ПРОБЛЕМ
+        // Конфигурация
         const CONFIG = {
-            // Используем простой GET-запрос без сложных заголовков
-            DATA_URL: 'data.json', // Локальный файл в том же каталоге
-            UPDATE_INTERVAL: 3000
+            DATA_URL: 'data.json',
+            UPDATE_INTERVAL: 10000, // 10 секунд для тестирования
+            VERSION: '1.0'
         };
         
-        // Если файл data.json есть в репозитории, он будет доступен
-        // по адресу: https://maksim-3d.github.io/cat2/data.json
+        // Глобальные переменные
+        let currentDataHash = '';
+        let lastUpdateTime = 0;
         
-        const loadingElement = document.getElementById('loading');
-        const contentElement = document.getElementById('content');
-        const refreshBtn = document.getElementById('refreshBtn');
-        const statusText = document.getElementById('statusText');
-        const statusBar = document.getElementById('statusBar');
+        // DOM элементы
+        const elements = {
+            loading: document.getElementById('loading'),
+            loadingText: document.getElementById('loadingText'),
+            content: document.getElementById('content'),
+            refreshBtn: document.getElementById('refreshBtn'),
+            forceRefreshBtn: document.getElementById('forceRefreshBtn'),
+            statusText: document.getElementById('statusText'),
+            statusBar: document.getElementById('statusBar'),
+            pageInfo: document.getElementById('pageInfo')
+        };
         
-        function formatNumber(num) {
-            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        // Функция для создания хеша данных (для проверки изменений)
+        function createDataHash(data) {
+            const str = JSON.stringify(data);
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            return hash.toString(36);
         }
         
-        function formatDate(timestamp) {
-            const date = new Date(timestamp);
-            return date.toLocaleString('ru-RU', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            });
-        }
-        
-        function getTimeAgo(timestamp) {
-            const now = new Date();
-            const updateTime = new Date(timestamp);
-            const diffMs = now - updateTime;
-            const diffSec = Math.floor(diffMs / 1000);
-            const diffMin = Math.floor(diffSec / 60);
-            const diffHour = Math.floor(diffMin / 60);
+        // Функция для получения данных с принудительным обновлением кеша
+        async function fetchData(forceRefresh = false) {
+            let url = CONFIG.DATA_URL;
             
-            if (diffSec < 60) return `${diffSec} сек назад`;
-            else if (diffMin < 60) return `${diffMin} мин назад`;
-            else return `${diffHour} ч назад`;
+            if (forceRefresh) {
+                // Добавляем параметр для обхода кеша
+                url += '?nocache=' + Date.now() + '&v=' + Math.random();
+            } else {
+                // Обычный запрос с версией
+                url += '?v=' + CONFIG.VERSION;
+            }
+            
+            const response = await fetch(url, {
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
+            return await response.json();
         }
         
-        async function loadData() {
+        // Основная функция загрузки данных
+        async function loadData(forceRefresh = false) {
             try {
-                statusText.textContent = 'Загрузка...';
-                statusBar.className = 'status-bar';
+                elements.statusText.textContent = forceRefresh ? 'Принудительная загрузка...' : 'Загрузка...';
+                elements.statusBar.className = 'status-bar';
+                elements.loadingText.textContent = forceRefresh ? 'Принудительная загрузка...' : 'Загрузка данных...';
                 
-                // Простой запрос к локальному файлу
-                // На GitHub Pages файл data.json будет доступен по относительному пути
-                const response = await fetch(CONFIG.DATA_URL + '?t=' + Date.now());
+                const data = await fetchData(forceRefresh);
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
+                // Проверяем, изменились ли данные
+                const newHash = createDataHash(data);
+                const dataChanged = newHash !== currentDataHash;
                 
-                const data = await response.json();
-                
-                // Проверяем структуру данных
-                if (data && typeof data.totalCats === 'number') {
+                if (dataChanged || forceRefresh) {
+                    currentDataHash = newHash;
+                    lastUpdateTime = Date.now();
                     updateUI(data);
-                    statusText.textContent = 'Данные загружены';
-                    statusBar.className = 'status-bar status-online';
-                    return data;
+                    
+                    elements.statusText.textContent = `Данные обновлены ${forceRefresh ? '(принудительно)' : ''}`;
+                    elements.statusBar.className = 'status-bar status-online';
+                    
+                    // Показываем уведомление об обновлении
+                    if (dataChanged && !forceRefresh) {
+                        showNotification('Данные обновлены!');
+                    }
+                    
+                    console.log('Данные загружены:', data);
                 } else {
-                    throw new Error('Некорректный формат данных');
+                    elements.statusText.textContent = 'Данные актуальны';
+                    elements.statusBar.className = 'status-bar status-online';
+                    console.log('Данные не изменились');
                 }
+                
+                return data;
                 
             } catch (error) {
-                console.warn('Ошибка загрузки:', error.message);
-                statusText.textContent = 'Ошибка загрузки';
-                statusBar.className = 'status-bar status-offline';
+                console.error('Ошибка загрузки:', error);
+                elements.statusText.textContent = 'Ошибка загрузки';
+                elements.statusBar.className = 'status-bar status-offline';
                 
-                // Показываем демо данные
                 showDemoData();
                 return null;
             }
         }
         
+        // Функция показа уведомления
+        function showNotification(message) {
+            // Создаем временное уведомление
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #10b981;
+                color: white;
+                padding: 15px 25px;
+                border-radius: 10px;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+                z-index: 1000;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+        
+        // Добавляем CSS для анимации уведомлений
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Демо данные
         function showDemoData() {
             const demoData = {
                 totalCats: Math.floor(Math.random() * 1000) + 1500,
@@ -370,7 +278,7 @@
                 totalMatroskin: Math.floor(Math.random() * 100) + 20,
                 count: Math.floor(Math.random() * 30) + 15,
                 timestamp: new Date().toISOString(),
-                note: 'Демо данные (не удалось загрузить data.json)'
+                note: 'Демо данные (не удалось загрузить актуальные)'
             };
             
             updateUI(demoData);
@@ -378,98 +286,141 @@
             const noteContainer = document.getElementById('noteContainer');
             noteContainer.innerHTML = `
                 <div class="note">
-                    <strong><i class="fas fa-info-circle"></i> Внимание:</strong> 
-                    Используются демо-данные. Убедитесь, что файл data.json существует в репозитории.
-                    <br><small>Проверьте: https://maksim-3d.github.io/cat2/data.json</small>
+                    <strong><i class="fas fa-exclamation-triangle"></i> Внимание:</strong> 
+                    Используются демо-данные. Актуальные данные временно недоступны.
+                    <br><small>Проверьте подключение к интернету и обновите страницу.</small>
                 </div>
             `;
         }
         
+        // Обновление интерфейса
         function updateUI(data) {
-            // Обновляем основные показатели
+            // Форматирование чисел
+            function formatNumber(num) {
+                return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            }
+            
+            // Форматирование даты
+            function formatDate(timestamp) {
+                const date = new Date(timestamp);
+                return date.toLocaleString('ru-RU', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+            }
+            
+            // Обновляем значения
             document.getElementById('totalCats').textContent = formatNumber(data.totalCats);
             document.getElementById('totalAttacks').textContent = formatNumber(data.totalAttacks);
             document.getElementById('avgSuccess').textContent = data.avgSuccess + '%';
             document.getElementById('totalMatroskin').textContent = formatNumber(data.totalMatroskin);
-            
-            // Обновляем детальную информацию
             document.getElementById('count').textContent = formatNumber(data.count);
             document.getElementById('timestamp').textContent = formatDate(data.timestamp);
-            document.getElementById('lastUpdate').textContent = getTimeAgo(data.timestamp);
             
-            // Определяем статус данных
+            // Время с последнего обновления
+            const updateTime = new Date(data.timestamp);
+            const now = new Date();
+            const diffMinutes = Math.floor((now - updateTime) / (1000 * 60));
+            document.getElementById('lastUpdate').textContent = diffMinutes < 1 ? 'Только что' : `${diffMinutes} мин назад`;
+            
+            // Статус данных
             const isDemo = data.note && data.note.toLowerCase().includes('демо');
             document.getElementById('dataStatus').textContent = isDemo ? 'Демо' : 'Актуальные';
             
-            // Сохраняем данные локально для офлайн-режима
-            try {
-                localStorage.setItem('catStats', JSON.stringify(data));
-                localStorage.setItem('catStatsTime', Date.now().toString());
-            } catch (e) {
-                console.warn('Не удалось сохранить в localStorage');
-            }
+            // Версия данных (хеш)
+            document.getElementById('dataVersion').textContent = currentDataHash.substring(0, 8);
             
-            // Отображаем примечание
+            // Информация о странице
+            elements.pageInfo.textContent = `Данные обновлены: ${formatDate(data.timestamp)}`;
+            
+            // Примечание
             const noteContainer = document.getElementById('noteContainer');
-            if (data.note) {
+            if (data.note && !isDemo) {
                 noteContainer.innerHTML = `
                     <div class="note">
-                        <strong><i class="fas fa-sticky-note"></i> Примечание:</strong> ${data.note}
+                        <strong><i class="fas fa-sticky-note"></i> Информация:</strong> ${data.note}
                     </div>
                 `;
-            } else {
+            } else if (!isDemo) {
                 noteContainer.innerHTML = '';
             }
             
             // Показываем контент
-            loadingElement.style.display = 'none';
-            contentElement.style.display = 'block';
+            elements.loading.style.display = 'none';
+            elements.content.style.display = 'block';
+            
+            // Сохраняем в localStorage
+            try {
+                localStorage.setItem('catStats', JSON.stringify(data));
+                localStorage.setItem('catStatsTime', Date.now().toString());
+                localStorage.setItem('catStatsHash', currentDataHash);
+            } catch (e) {
+                console.warn('Не удалось сохранить в localStorage');
+            }
         }
         
+        // Инициализация
         async function init() {
-            // Сначала пробуем загрузить сохраненные данные
+            // Пробуем загрузить сохраненные данные
             try {
                 const savedData = localStorage.getItem('catStats');
                 const savedTime = localStorage.getItem('catStatsTime');
+                const savedHash = localStorage.getItem('catStatsHash');
                 
-                if (savedData && savedTime) {
+                if (savedData && savedTime && savedHash) {
                     const data = JSON.parse(savedData);
                     const timeDiff = Date.now() - parseInt(savedTime);
                     
-                    // Если данные не старше 5 минут, показываем их
-                    if (timeDiff < 5 * 60 * 1000) {
+                    // Если данные не старше 2 минут, показываем их
+                    if (timeDiff < 2 * 60 * 1000) {
+                        currentDataHash = savedHash;
                         updateUI(data);
-                        statusText.textContent = 'Используются локальные данные';
-                        statusBar.className = 'status-bar';
+                        elements.statusText.textContent = 'Используются кешированные данные';
+                        elements.statusBar.className = 'status-bar';
                     }
                 }
             } catch (e) {
-                // Игнорируем ошибки localStorage
+                console.warn('Ошибка загрузки из localStorage:', e);
             }
             
-            // Затем загружаем актуальные данные
+            // Загружаем актуальные данные
             await loadData();
             
-            // Настраиваем автообновление
-            setInterval(loadData, CONFIG.UPDATE_INTERVAL);
+            // Автообновление
+            setInterval(() => loadData(), CONFIG.UPDATE_INTERVAL);
             
-            // Настраиваем кнопку обновления
-            refreshBtn.addEventListener('click', async () => {
-                const originalHtml = refreshBtn.innerHTML;
-                refreshBtn.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Обновление...';
-                refreshBtn.disabled = true;
+            // Кнопка обновления
+            elements.refreshBtn.addEventListener('click', async () => {
+                elements.refreshBtn.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Обновление...';
+                elements.refreshBtn.disabled = true;
                 
                 await loadData();
                 
-                // Возвращаем исходное состояние кнопки
                 setTimeout(() => {
-                    refreshBtn.innerHTML = originalHtml;
-                    refreshBtn.disabled = false;
+                    elements.refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Обновить данные';
+                    elements.refreshBtn.disabled = false;
+                }, 1000);
+            });
+            
+            // Кнопка принудительного обновления
+            elements.forceRefreshBtn.addEventListener('click', async () => {
+                elements.forceRefreshBtn.innerHTML = '<i class="fas fa-bolt fa-spin"></i> Обновление...';
+                elements.forceRefreshBtn.disabled = true;
+                
+                await loadData(true);
+                
+                setTimeout(() => {
+                    elements.forceRefreshBtn.innerHTML = '<i class="fas fa-bolt"></i> Принудительное обновление';
+                    elements.forceRefreshBtn.disabled = false;
                 }, 1000);
             });
         }
         
-        // Запускаем при загрузке страницы
+        // Запускаем
         document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
