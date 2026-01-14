@@ -3,186 +3,558 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🐱 Статистика котов</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <title>Статистика котов</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             padding: 20px;
         }
-        .container { max-width: 100%; }
-        .header { text-align: center; margin-bottom: 30px; color: white; }
-        .header h1 { font-size: 28px; margin-bottom: 10px; }
-        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px; }
-        .stat-card { background: rgba(255, 255, 255, 0.95); border-radius: 15px; padding: 20px; text-align: center; }
-        .stat-value { font-size: 36px; font-weight: bold; color: #333; margin-bottom: 5px; }
-        .stat-label { color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
-        .loading { text-align: center; padding: 40px; color: white; }
-        .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .refresh-btn { width: 100%; padding: 18px; background: #0088cc; color: white; border: none; border-radius: 12px; font-size: 18px; cursor: pointer; margin-top: 20px; }
-        .error { background: rgba(255, 50, 50, 0.2); border-radius: 10px; padding: 15px; color: white; text-align: center; margin-bottom: 15px; }
-        .success { background: rgba(50, 255, 50, 0.2); border-radius: 10px; padding: 15px; color: white; text-align: center; margin-bottom: 15px; }
+        
+        .container {
+            max-width: 1200px;
+            width: 100%;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            text-align: center;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+        }
+        
+        .stat-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+        
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .stat-label {
+            font-size: 1.2rem;
+            color: #666;
+            font-weight: 600;
+        }
+        
+        .stat-details {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+        }
+        
+        .details-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .details-header h2 {
+            color: #333;
+            font-size: 1.8rem;
+        }
+        
+        .timestamp {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .detail-item {
+            padding: 15px;
+            background: #f8f9ff;
+            border-radius: 10px;
+        }
+        
+        .detail-label {
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 5px;
+        }
+        
+        .detail-value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #333;
+        }
+        
+        .controls {
+            text-align: center;
+            margin-top: 30px;
+        }
+        
+        .btn {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .status-bar {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50px;
+            padding: 15px 30px;
+            margin-top: 20px;
+            display: inline-block;
+            font-weight: 600;
+        }
+        
+        .status-online {
+            color: #10b981;
+        }
+        
+        .status-offline {
+            color: #ef4444;
+        }
+        
+        .note {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 0.95rem;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: white;
+            font-size: 1.5rem;
+        }
+        
+        .loading i {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .stat-card {
+                padding: 20px;
+            }
+            
+            .stat-value {
+                font-size: 2rem;
+            }
+            
+            .details-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🐱 Статистика котов</h1>
-            <p id="status">Инициализация...</p>
+            <h1><i class="fas fa-cat"></i> Статистика котов</h1>
+            <p>Актуальные данные в реальном времени</p>
         </div>
         
-        <div id="stats">
-            <div class="loading">
-                <div class="spinner"></div>
-                <div>Подключение к серверу...</div>
+        <div id="loading" class="loading">
+            <i class="fas fa-paw fa-spin"></i>
+            Загружаем данные...
+        </div>
+        
+        <div id="content" style="display: none;">
+            <!-- Основные карточки статистики -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-cat"></i>
+                    </div>
+                    <div class="stat-value" id="totalCats">0</div>
+                    <div class="stat-label">Всего котов</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-crosshairs"></i>
+                    </div>
+                    <div class="stat-value" id="totalAttacks">0</div>
+                    <div class="stat-label">Всего атак</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stat-value" id="avgSuccess">0%</div>
+                    <div class="stat-label">Успешных атак</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                    <div class="stat-value" id="totalMatroskin">0</div>
+                    <div class="stat-label">Котов Матроскиных</div>
+                </div>
             </div>
-        </div>
-        
-        <button onclick="loadData()" class="refresh-btn">🔄 Обновить</button>
-        
-        <div id="message" style="display: none;"></div>
-        
-        <div style="margin-top: 20px; text-align: center; color: rgba(255,255,255,0.7); font-size: 12px;">
-            IP сервера: 78.40.188.120:3000
+            
+            <!-- Детальная информация -->
+            <div class="stat-details">
+                <div class="details-header">
+                    <h2><i class="fas fa-info-circle"></i> Детальная информация</h2>
+                    <div class="timestamp" id="timestamp">Загрузка...</div>
+                </div>
+                
+                <div class="details-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">Количество в базе</div>
+                        <div class="detail-value" id="count">0</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Статус данных</div>
+                        <div class="detail-value" id="dataStatus">Проверка...</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Источник</div>
+                        <div class="detail-value">GitHub</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Последнее обновление</div>
+                        <div class="detail-value" id="lastUpdate">—</div>
+                    </div>
+                </div>
+                
+                <div id="noteContainer"></div>
+            </div>
+            
+            <!-- Управление -->
+            <div class="controls">
+                <button class="btn" id="refreshBtn">
+                    <i class="fas fa-sync-alt"></i> Обновить данные
+                </button>
+                <div class="status-bar" id="statusBar">
+                    Статус: <span id="statusText">Загрузка...</span>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        // Telegram WebApp
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        tg.ready();
+        // Конфигурация
+        const CONFIG = {
+            DATA_URL: 'https://raw.githubusercontent.com/maksim-3d/cat2/main/data.json',
+            UPDATE_INTERVAL: 1000, // 30 секунд
+            GITHUB_PAGES_URL: 'https://maksim-3d.github.io/cat2/'
+        };
         
-        // Рабочие CORS прокси (проверены)
-        const WORKING_PROXIES = [
-            {
-                name: 'GitHubProxy',
-                getUrl: (url) => `https://api.codetabs.com/v1/proxy?quest=${url}`,
-                parseResponse: async (response) => await response.json()
+        // Элементы DOM
+        const loadingElement = document.getElementById('loading');
+        const contentElement = document.getElementById('content');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const statusText = document.getElementById('statusText');
+        const statusBar = document.getElementById('statusBar');
+        
+        // Функция форматирования чисел
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
+        
+        // Функция форматирования даты
+        function formatDate(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleString('ru-RU', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+        
+        // Функция для расчета времени с последнего обновления
+        function getTimeAgo(timestamp) {
+            const now = new Date();
+            const updateTime = new Date(timestamp);
+            const diffMs = now - updateTime;
+            const diffSec = Math.floor(diffMs / 1000);
+            const diffMin = Math.floor(diffSec / 60);
+            const diffHour = Math.floor(diffMin / 60);
+            
+            if (diffSec < 60) {
+                return `${diffSec} секунд назад`;
+            } else if (diffMin < 60) {
+                return `${diffMin} минут назад`;
+            } else {
+                return `${diffHour} часов назад`;
             }
-        ];
+        }
         
-        let currentProxy = 0;
-        const SERVER_URL = 'http://78.40.188.120:3000/stats';
-        
-        // Функция загрузки через прокси
+        // Основная функция загрузки данных
         async function loadData() {
-            const proxy = WORKING_PROXIES[currentProxy];
-            console.log(`Пробую прокси: ${proxy.name}`);
-            
-            showMessage(`Использую ${proxy.name}...`, 'success');
-            document.getElementById('status').textContent = `Подключение через ${proxy.name}...`;
-            
             try {
-                const proxyUrl = proxy.getUrl(SERVER_URL);
-                console.log('Запрос к:', proxyUrl);
+                // Показываем статус загрузки
+                statusText.textContent = 'Загрузка...';
+                statusBar.className = 'status-bar';
                 
-                const response = await fetch(proxyUrl, {
+                // Делаем запрос к данным с таймаутом
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                
+                const response = await fetch(CONFIG.DATA_URL + '?t=' + Date.now(), {
+                    signal: controller.signal,
                     headers: {
-                        'Accept': 'application/json',
-                        'User-Agent': 'Telegram-Mini-App'
-                    },
-                    timeout: 10000
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache',
+                        'Expires': '0'
+                    }
                 });
                 
+                clearTimeout(timeoutId);
+                
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
-                const data = await proxy.parseResponse(response);
-                console.log('Данные получены:', data);
+                const data = await response.json();
                 
-                displayData(data);
-                showMessage(`✓ Успешно через ${proxy.name}`, 'success');
-                document.getElementById('status').textContent = `Обновлено: ${new Date().toLocaleTimeString()}`;
+                // Обновляем UI с данными
+                updateUI(data);
+                
+                // Показываем успешный статус
+                statusText.textContent = 'Данные загружены';
+                statusBar.className = 'status-bar status-online';
+                
+                return data;
                 
             } catch (error) {
-                console.error(`Прокси ${proxy.name} не сработал:`, error);
+                console.error('Ошибка загрузки данных:', error);
                 
-                // Пробуем следующий прокси
-                currentProxy = (currentProxy + 1) % WORKING_PROXIES.length;
+                // Показываем ошибку
+                statusText.textContent = 'Ошибка загрузки';
+                statusBar.className = 'status-bar status-offline';
                 
-                if (currentProxy === 0) {
-                    // Все прокси не работают, показываем демо данные
-                    showMessage('Все прокси не работают. Показываю демо данные.', 'error');
-                    showDemoData();
-                    document.getElementById('status').textContent = 'Демо режим';
-                } else {
-                    // Пробуем следующий прокси через 2 секунды
-                    setTimeout(loadData, 2000);
+                // Показываем пользователю сообщение об ошибке
+                if (!document.getElementById('errorNote')) {
+                    const noteContainer = document.getElementById('noteContainer');
+                    noteContainer.innerHTML = `
+                        <div class="note" id="errorNote">
+                            <strong><i class="fas fa-exclamation-triangle"></i> Внимание:</strong> 
+                            Не удалось загрузить актуальные данные. Показаны последние сохранённые значения.
+                            ${error.message ? `<br><small>${error.message}</small>` : ''}
+                        </div>
+                    `;
                 }
+                
+                // Можно попробовать загрузить локальные данные, если они есть
+                const localData = localStorage.getItem('catStats');
+                if (localData) {
+                    try {
+                        const parsedData = JSON.parse(localData);
+                        updateUI(parsedData);
+                        statusText.textContent = 'Используются локальные данные';
+                    } catch (e) {
+                        // Если и локальные данные битые, показываем заглушки
+                        showDefaultData();
+                    }
+                } else {
+                    showDefaultData();
+                }
+                
+                return null;
             }
         }
         
-        // Демо данные
-        function showDemoData() {
-            const demoData = {
-                totalCats: 1854,
-                totalAttacks: 3247,
-                avgSuccess: 72,
-                totalMatroskin: 56,
-                count: 22,
+        // Функция для отображения данных по умолчанию
+        function showDefaultData() {
+            const defaultData = {
+                totalCats: 1500,
+                totalAttacks: 3000,
+                avgSuccess: 65,
+                totalMatroskin: 50,
+                count: 25,
                 timestamp: new Date().toISOString(),
-                note: 'Демо данные (сервер недоступен)'
+                note: 'Используются демо-данные'
             };
-            displayData(demoData);
-        }
-        
-        // Отображение данных
-        function displayData(data) {
-            document.getElementById('stats').innerHTML = `
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-value">${formatNumber(data.totalCats || 0)}</div>
-                        <div class="stat-label">Всего котов</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${formatNumber(data.totalAttacks || 0)}</div>
-                        <div class="stat-label">Всего атак</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${data.avgSuccess || 0}%</div>
-                        <div class="stat-label">Успешность</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${formatNumber(data.totalMatroskin || 0)}</div>
-                        <div class="stat-label">Матросскины</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${data.count || 0}</div>
-                        <div class="stat-label">Игроков онлайн</div>
-                    </div>
-                </div>
-                <div style="text-align:center; color:white; margin-top:10px; font-size:12px;">
-                    ${data.timestamp ? 'Обновлено: ' + new Date(data.timestamp).toLocaleTimeString() : ''}
-                    ${data.note ? '<br>' + data.note : ''}
+            
+            updateUI(defaultData);
+            
+            const noteContainer = document.getElementById('noteContainer');
+            noteContainer.innerHTML = `
+                <div class="note">
+                    <strong><i class="fas fa-info-circle"></i> Информация:</strong> 
+                    Используются демонстрационные данные. Проверьте подключение к интернету и доступность репозитория.
                 </div>
             `;
         }
         
-        // Вспомогательные функции
-        function formatNumber(num) {
-            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-            return num;
+        // Функция обновления интерфейса
+        function updateUI(data) {
+            // Обновляем основные карточки
+            document.getElementById('totalCats').textContent = formatNumber(data.totalCats);
+            document.getElementById('totalAttacks').textContent = formatNumber(data.totalAttacks);
+            document.getElementById('avgSuccess').textContent = data.avgSuccess + '%';
+            document.getElementById('totalMatroskin').textContent = formatNumber(data.totalMatroskin);
+            
+            // Обновляем детальную информацию
+            document.getElementById('count').textContent = formatNumber(data.count);
+            document.getElementById('timestamp').textContent = formatDate(data.timestamp);
+            document.getElementById('lastUpdate').textContent = getTimeAgo(data.timestamp);
+            document.getElementById('dataStatus').textContent = data.note ? 'Демо' : 'Актуальные';
+            
+            // Сохраняем данные локально
+            localStorage.setItem('catStats', JSON.stringify(data));
+            localStorage.setItem('catStatsTimestamp', Date.now().toString());
+            
+            // Если есть примечание, показываем его
+            const noteContainer = document.getElementById('noteContainer');
+            if (data.note) {
+                noteContainer.innerHTML = `
+                    <div class="note">
+                        <strong><i class="fas fa-sticky-note"></i> Примечание:</strong> ${data.note}
+                    </div>
+                `;
+            } else {
+                noteContainer.innerHTML = '';
+            }
+            
+            // Скрываем загрузку и показываем контент
+            loadingElement.style.display = 'none';
+            contentElement.style.display = 'block';
         }
         
-        function showMessage(text, type) {
-            const msg = document.getElementById('message');
-            msg.innerHTML = text;
-            msg.className = type;
-            msg.style.display = 'block';
-            setTimeout(() => msg.style.display = 'none', 5000);
+        // Функция инициализации
+        async function init() {
+            // Загружаем данные сразу при загрузке страницы
+            await loadData();
+            
+            // Обновляем данные каждые 30 секунд
+            setInterval(loadData, CONFIG.UPDATE_INTERVAL);
+            
+            // Добавляем обработчик кнопки обновления
+            refreshBtn.addEventListener('click', async () => {
+                refreshBtn.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Обновление...';
+                refreshBtn.disabled = true;
+                
+                await loadData();
+                
+                refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Обновить данные';
+                refreshBtn.disabled = false;
+                
+                // Анимация подтверждения
+                refreshBtn.style.backgroundColor = '#10b981';
+                refreshBtn.style.color = 'white';
+                setTimeout(() => {
+                    refreshBtn.style.backgroundColor = '';
+                    refreshBtn.style.color = '';
+                }, 500);
+            });
+            
+            // Добавляем информацию о GitHub Pages
+            const controls = document.querySelector('.controls');
+            const githubLink = document.createElement('a');
+            githubLink.href = CONFIG.GITHUB_PAGES_URL;
+            githubLink.target = '_blank';
+            githubLink.className = 'btn';
+            githubLink.style.marginLeft = '10px';
+            githubLink.innerHTML = '<i class="fab fa-github"></i> GitHub Pages';
+            controls.appendChild(githubLink);
         }
         
-        // Автостарт
+        // Запускаем приложение при загрузке страницы
+        document.addEventListener('DOMContentLoaded', init);
+        
+        // Добавляем анимацию при наведении на карточки
         document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(loadData, 1000); // Ждем инициализацию Telegram
-            setInterval(loadData, 1000); // Автообновление
+            const statCards = document.querySelectorAll('.stat-card');
+            statCards.forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    const icon = this.querySelector('.stat-icon i');
+                    icon.style.transform = 'scale(1.2)';
+                    icon.style.transition = 'transform 0.3s ease';
+                });
+                
+                card.addEventListener('mouseleave', function() {
+                    const icon = this.querySelector('.stat-icon i');
+                    icon.style.transform = 'scale(1)';
+                });
+            });
         });
     </script>
 </body>
