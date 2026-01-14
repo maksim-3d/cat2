@@ -1,9 +1,8 @@
 {
-  "totalCats": 1696,
-  "totalAttacks": 4497,
-  "avgSuccess": 79,
-  "totalMatroskin": 103,
-  "count": 33,
-  "timestamp": "2026-01-14T05:32:33.757Z",
-  "note": "Демо данные (сервер недоступен)"
+  "totalCats": 83524,
+  "totalAttacks": 34049,
+  "avgSuccess": 66,
+  "totalMatroskin": 0,
+  "count": 22,
+  "timestamp": "2026-01-14T05:32:38.644Z"
 }
